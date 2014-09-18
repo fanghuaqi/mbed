@@ -24,7 +24,7 @@ except ImportError, e:
 
 import os
 from optparse import OptionParser
-from time import sleep
+from time import sleep, time
 from sys import stdout
 
 # This is a little tricky. We need to add upper directory to path so
@@ -77,7 +77,7 @@ class Mbed:
 
         (self.options, _) = parser.parse_args()
 
-        self.DEFAULT_RESET_TOUT = 2
+        self.DEFAULT_RESET_TOUT = 0
         self.DEFAULT_TOUT = 10
 
         if self.options.port is None:
@@ -89,7 +89,7 @@ class Mbed:
         self.extra_serial = None
         self.serial = None
         self.timeout = self.DEFAULT_TOUT if self.options.timeout is None else self.options.timeout
-        print 'Host test instrumentation on port: "%s" with serial: "%s"' % (self.port, self.disk)
+        print 'Host test instrumentation on port: "%s" and disk: "%s"' % (self.port, self.disk)
 
     def init_serial(self, baud=9600, extra_baud=9600):
         """ Initialize serial port. Function will return error is port can't be opened or initialized
@@ -126,6 +126,22 @@ class Mbed:
                 result = self.serial.read(count)
             except:
                 result = None
+        return result
+
+    def serial_readline(self, timeout=5):
+        """ Wraps self.mbed.serial object read method to read one line from serial port
+        """
+        result = ''
+        start = time()
+        while (time() - start) < timeout:
+            if self.serial:
+                try:
+                    c = self.serial.read(1)
+                    result += c
+                except:
+                    result = None
+                if c == '\n':
+                    break
         return result
 
     def serial_write(self, write_buffer):

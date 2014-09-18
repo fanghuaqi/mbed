@@ -82,6 +82,7 @@ if __name__ == '__main__':
             ('uvision', 'LPC1347'),
             ('uvision', 'LPC1114'),
             ('uvision', 'LPC4088'),
+            ('uvision', 'LPC4337'),
 
             ('uvision', 'NUCLEO_F030R8'),
             ('uvision', 'NUCLEO_F072RB'),
@@ -121,6 +122,8 @@ if __name__ == '__main__':
             ('gcc_arm', 'DISCO_F407VG'),
             ('gcc_arm', 'DISCO_F303VC'),
             ('gcc_arm', 'NRF51822'),
+            ('gcc_arm', 'NUCLEO_F401RE'),
+            ('gcc_arm', 'NUCLEO_F411RE'),
 
 
             ('ds5_5', 'LPC1768'), ('ds5_5', 'LPC11U24'),
