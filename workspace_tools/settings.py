@@ -76,9 +76,6 @@ GOANNA_PATH = "c:/Program Files (x86)/RedLizards/Goanna Central 3.2.3/bin"
 CPPCHECK_CMD = ["cppcheck", "--enable=all"]
 CPPCHECK_MSG_FORMAT = ["--template=[{severity}] {file}@{line}: {id}:{message}"]
 
-# SiliconLabs energyAware Commander 2.84 path
-EACOMMANDER_CMD = 'c:/SiliconLabs/SimplicityStudio/v2/commander/eACommander.exe'
-
 BUILD_OPTIONS = []
 
 # mbed.org username
@@ -114,4 +111,4 @@ try:
     # settings file stored in the repository
     from workspace_tools.private_settings import *
 except ImportError:
-    print '[WARNING] Using default settings. Define you settings in the file "workspace_tools/private_settings.py" or in "./mbed_settings.py"'
+    print '[WARNING] Using default settings. Define your settings in the file "workspace_tools/private_settings.py" or in "./mbed_settings.py"'
