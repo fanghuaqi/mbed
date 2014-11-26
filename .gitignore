@@ -67,3 +67,7 @@ debug.log
 # Tags
 *TAGS*
 *tags*
+
+# PyCharm
+*.idea
+
