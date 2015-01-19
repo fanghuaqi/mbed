@@ -52,18 +52,22 @@ OFFICIAL_MBED_LIBRARY_BUILD = (
     ('K64F',         ('ARM', 'GCC_ARM', 'IAR')),
     ('K22F',         ('ARM', 'GCC_ARM', 'IAR')),
     ('K20D50M',      ('ARM', 'GCC_ARM' , 'IAR')),
+    ('TEENSY3_1',      ('ARM', 'GCC_ARM')),
 
     ('NUCLEO_F030R8', ('ARM', 'uARM', 'IAR', 'GCC_ARM')),
+    ('NUCLEO_F070RB', ('ARM', 'uARM', 'IAR', 'GCC_ARM')),
     ('NUCLEO_F072RB', ('ARM', 'uARM', 'IAR', 'GCC_ARM')),
-    ('NUCLEO_F091RC', ('ARM', 'uARM', 'IAR')),
-    ('NUCLEO_F103RB', ('ARM', 'uARM', 'IAR')),
+    ('NUCLEO_F091RC', ('ARM', 'uARM', 'IAR', 'GCC_ARM')),
+    ('NUCLEO_F103RB', ('ARM', 'uARM', 'IAR', 'GCC_ARM')),
     ('NUCLEO_F302R8', ('ARM', 'uARM', 'IAR', 'GCC_ARM')),
+    ('NUCLEO_F303RE', ('ARM', 'uARM', 'IAR')),
     ('NUCLEO_F334R8', ('ARM', 'uARM', 'IAR', 'GCC_ARM')),
     ('NUCLEO_F401RE', ('ARM', 'uARM', 'IAR', 'GCC_ARM')),
     ('NUCLEO_F411RE', ('ARM', 'uARM', 'IAR', 'GCC_ARM')),
-    ('NUCLEO_L053R8', ('ARM', 'uARM', 'IAR')),
+    ('NUCLEO_L053R8', ('ARM', 'uARM', 'IAR', 'GCC_ARM')),
     ('NUCLEO_L152RE', ('ARM', 'uARM', 'IAR', 'GCC_ARM')),
     ('MTS_MDOT_F405RG', ('ARM', 'uARM', 'IAR', 'GCC_ARM')),
+    ('MTS_MDOT_F411RE', ('ARM', 'uARM', 'IAR', 'GCC_ARM')),
 
     ('ARCH_MAX',     ('ARM', 'GCC_ARM')),
 
@@ -72,6 +76,7 @@ OFFICIAL_MBED_LIBRARY_BUILD = (
     ('NRF51_DONGLE', ('ARM', 'GCC_ARM')),
     ('HRM1017',      ('ARM', 'GCC_ARM')),
     ('ARCH_BLE',     ('ARM', 'GCC_ARM')),
+    ('BLE_SMURFS',     ('ARM', 'GCC_ARM')),
     ('RBLAB_NRF51822', ('ARM', 'GCC_ARM')),
     ('RBLAB_BLENANO', ('ARM', 'GCC_ARM')),
     ('WALLBOT_BLE',  ('ARM', 'GCC_ARM')),
@@ -79,7 +84,7 @@ OFFICIAL_MBED_LIBRARY_BUILD = (
     ('LPC11U68',     ('uARM','GCC_ARM','GCC_CR', 'IAR')),
     ('OC_MBUINO',     ('ARM', 'uARM', 'GCC_ARM', 'IAR')),
 
-#    ('RZ_A1H'   ,     ('ARM',)),
+    ('RZ_A1H'   ,     ('ARM',)),
 )
 
 
@@ -119,4 +124,3 @@ if __name__ == '__main__':
     if failures:
         print "\n\nBuild failures:"
         print "\n".join(["  * %s" % f for f in failures])
-
