@@ -33,10 +33,11 @@ OFFICIAL_MBED_LIBRARY_BUILD = (
     ('ARCH_PRO',     ('ARM', 'GCC_ARM', 'GCC_CR', 'GCC_CS', 'IAR')),
     ('LPC2368',      ('ARM', 'GCC_ARM')),
     ('LPC812',       ('uARM','IAR')),
-    ('LPC824',       ('uARM',)),
+    ('LPC824',       ('uARM', 'IAR')),
     ('SSCI824',      ('uARM',)),
     ('LPC1347',      ('ARM','IAR')),
     ('LPC4088',      ('ARM', 'GCC_ARM', 'GCC_CR', 'IAR')),
+    ('LPC4088_DM',   ('ARM', 'GCC_ARM', 'GCC_CR', 'IAR')),
     ('LPC1114',      ('uARM','GCC_ARM', 'IAR')),
     ('LPC11U35_401', ('ARM', 'uARM','GCC_ARM','GCC_CR', 'IAR')),
     ('LPC11U35_501', ('ARM', 'uARM','GCC_ARM','GCC_CR', 'IAR')),
@@ -44,6 +45,7 @@ OFFICIAL_MBED_LIBRARY_BUILD = (
     ('XADOW_M0',     ('ARM', 'uARM','GCC_ARM','GCC_CR')),
     ('ARCH_GPRS',    ('ARM', 'uARM', 'GCC_ARM', 'GCC_CR', 'IAR')),
     ('LPC4337',      ('ARM',)),
+    ('LPC11U37H_401', ('ARM', 'uARM','GCC_ARM','GCC_CR', 'IAR')),
 
     ('KL05Z',        ('ARM', 'uARM', 'GCC_ARM', 'IAR')),
     ('KL25Z',        ('ARM', 'GCC_ARM', 'IAR')),
@@ -71,20 +73,20 @@ OFFICIAL_MBED_LIBRARY_BUILD = (
 
     ('ARCH_MAX',     ('ARM', 'GCC_ARM')),
 
-    ('NRF51822',     ('ARM', 'GCC_ARM')),
-    ('NRF51_DK',     ('ARM', 'GCC_ARM')),
-    ('NRF51_DONGLE', ('ARM', 'GCC_ARM')),
-    ('HRM1017',      ('ARM', 'GCC_ARM')),
-    ('ARCH_BLE',     ('ARM', 'GCC_ARM')),
-    ('BLE_SMURFS',     ('ARM', 'GCC_ARM')),
+    ('NRF51822',     ('ARM', 'GCC_ARM', 'IAR')),
+    ('NRF51_DK',     ('ARM', 'GCC_ARM', 'IAR')),
+    ('NRF51_DONGLE', ('ARM', 'GCC_ARM', 'IAR')),
+    ('HRM1017',      ('ARM', 'GCC_ARM', 'IAR')),
+    ('ARCH_BLE',     ('ARM', 'GCC_ARM', 'IAR')),
+    ('SEEED_TINY_BLE', ('ARM', 'GCC_ARM', 'IAR')),
     ('RBLAB_NRF51822', ('ARM', 'GCC_ARM')),
     ('RBLAB_BLENANO', ('ARM', 'GCC_ARM')),
     ('WALLBOT_BLE',  ('ARM', 'GCC_ARM')),
 
-    ('LPC11U68',     ('uARM','GCC_ARM','GCC_CR', 'IAR')),
+    ('LPC11U68',     ('ARM', 'uARM','GCC_ARM','GCC_CR', 'IAR')),
     ('OC_MBUINO',     ('ARM', 'uARM', 'GCC_ARM', 'IAR')),
 
-    ('RZ_A1H'   ,     ('ARM',)),
+    ('RZ_A1H'   ,     ('ARM', 'GCC_ARM')),
 )
 
 

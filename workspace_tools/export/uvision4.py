@@ -31,10 +31,12 @@ class Uvision4(Exporter):
         'K64F',
         'K22F',
         'K20D50M',
+        'TEENSY3_1',
         'LPC1347',
         'LPC1114',
         'LPC11C24',
         'LPC4088',
+        'LPC4088_DM',
         'LPC4330_M4',
         'LPC4337',
         'LPC812',
@@ -49,13 +51,16 @@ class Uvision4(Exporter):
         'NUCLEO_F401RE',
         'NUCLEO_F411RE',
         'NUCLEO_L053R8',
+        'NUCLEO_L073RZ',
         'NUCLEO_L152RE',
         'UBLOX_C027',
         'LPC1549',
+        'LPC11U68',
         # Removed as uvision4_lpc11u35_501.uvproj.tmpl is missing.
         #'LPC11U35_501',
         'NRF51822',
         'HRM1017',
+        'RBLAB_NRF51822',
         'ARCH_PRO',
         'ARCH_BLE',
         'DISCO_F407VG',
@@ -65,7 +70,9 @@ class Uvision4(Exporter):
         'MTS_MDOT_F405RG',
         'NRF51_DK',
         'NRF51_DONGLE',
-        'BLE_SMURFS',
+        'SEEED_TINY_BLE',
+        'LPC11U37H_401',
+		'DELTA_DFCM_NNN40',
     ]
 
     USING_MICROLIB = [
@@ -84,10 +91,13 @@ class Uvision4(Exporter):
         'NUCLEO_F401RE',
         'NUCLEO_F411RE',
         'NUCLEO_L053R8',
+        'NUCLEO_L073RZ',
         'NUCLEO_L152RE',
         'LPC1549',
+        'LPC11U68',
         'LPC11U35_501',
         'KL05Z',
+        'LPC11U37H_401',
     ]
 
     FILE_TYPES = {

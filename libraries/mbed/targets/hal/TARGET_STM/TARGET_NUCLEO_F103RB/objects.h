@@ -43,6 +43,7 @@ struct gpio_irq_s {
     IRQn_Type irq_n;
     uint32_t irq_index;
     uint32_t event;
+    PinName pin;
 };
 
 struct port_s {
@@ -85,6 +86,7 @@ struct spi_s {
 
 struct i2c_s {
     I2CName  i2c;
+    uint32_t slave;
 };
 
 struct pwmout_s {

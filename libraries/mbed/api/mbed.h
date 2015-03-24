@@ -16,7 +16,7 @@
 #ifndef MBED_H
 #define MBED_H
 
-#define MBED_LIBRARY_VERSION 92
+#define MBED_LIBRARY_VERSION 96
 
 #include "platform.h"
 

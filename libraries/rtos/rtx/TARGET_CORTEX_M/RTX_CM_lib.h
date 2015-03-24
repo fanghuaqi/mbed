@@ -235,8 +235,11 @@ osThreadDef_t os_thread_def_main = {(os_pthread)main, osPriorityNormal, 0, NULL}
 #elif defined(TARGET_KL05Z)
 #define INITIAL_SP            (0x20000C00UL)
 
-#elif defined(TARGET_LPC4088)
+#elif defined(TARGET_LPC4088) || defined(TARGET_LPC4088_DM)
 #define INITIAL_SP            (0x10010000UL)
+
+#elif defined(TARGET_LPC4330)
+#define INITIAL_SP            (0x10008000UL)
 
 #elif defined(TARGET_LPC4337)
 #define INITIAL_SP            (0x10008000UL)
@@ -261,9 +264,6 @@ osThreadDef_t os_thread_def_main = {(os_pthread)main, osPriorityNormal, 0, NULL}
 
 #elif defined(TARGET_LPC11U68)
 #define INITIAL_SP            (0x10004000UL)
-
-#elif defined(TARGET_NRF51822)
-#define INITIAL_SP            (0x20004000UL)
 
 #elif defined(TARGET_STM32F411RE)
 #define INITIAL_SP            (0x20020000UL)
@@ -298,16 +298,19 @@ osThreadDef_t os_thread_def_main = {(os_pthread)main, osPriorityNormal, 0, NULL}
 #elif defined(TARGET_STM32F401VC)
 #define INITIAL_SP            (0x20010000UL)
 
+#elif defined(TARGET_STM32F303RE)
+#define INITIAL_SP            (0x20010000UL)
+
 #else
 #error "no target defined"
 
 #endif
 
 #ifdef __CC_ARM
-extern unsigned char     Image$$RW_IRAM1$$ZI$$Limit[];
+extern uint32_t          Image$$RW_IRAM1$$ZI$$Limit[];
 #define HEAP_START      (Image$$RW_IRAM1$$ZI$$Limit)
 #elif defined(__GNUC__)
-extern unsigned char     __end__[];
+extern uint32_t          __end__[];
 #define HEAP_START      (__end__)
 #elif defined(__ICCARM__)
 #pragma section="HEAP"
@@ -471,14 +474,14 @@ void __iar_program_start( void )
   if (__low_level_init() != 0) {
     __iar_data_init3();
     mbed_sdk_init();
-    __iar_dynamic_initialization(); 
-  } 
+    __iar_dynamic_initialization();
+  }
   osKernelInitialize();
   set_main_stack();
   osThreadCreate(&os_thread_def_main, NULL);
   a = osKernelStart();
-  exit(a);  
-  
+  exit(a);
+
 }
 
 #endif

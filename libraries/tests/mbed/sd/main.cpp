@@ -31,6 +31,7 @@ SDFileSystem sd(p12, p13, p15, p14, "sd");
       defined(TARGET_NUCLEO_F401RE) || \
       defined(TARGET_NUCLEO_F411RE) || \
       defined(TARGET_NUCLEO_L053R8) || \
+      defined(TARGET_NUCLEO_L073RZ) || \
       defined(TARGET_NUCLEO_L152RE)
 SDFileSystem sd(D11, D12, D13, D10, "sd");
 
@@ -49,6 +50,9 @@ SDFileSystem sd(D11, D12, D13, D10, "sd");
 #elif defined(TARGET_RZ_A1H)
 SDFileSystem sd(P8_5, P8_6, P8_3, P8_4, "sd");
 
+#elif defined(TARGET_LPC11U37H_401)
+SDFileSystem sd(SDMOSI, SDMISO, SDSCLK, SDSSEL, "sd");
+    
 #else
 SDFileSystem sd(p11, p12, p13, p14, "sd");
 #endif
@@ -58,8 +62,12 @@ const char *sd_file_path = "/sd/out.txt";
 const int DATA_SIZE = 256;
 }
 
-int main()
-{
+int main() {
+    MBED_HOSTTEST_TIMEOUT(15);
+    MBED_HOSTTEST_SELECT(default_auto);
+    MBED_HOSTTEST_DESCRIPTION(SD File System);
+    MBED_HOSTTEST_START("MBED_A12");
+
     uint8_t data_written[DATA_SIZE] = { 0 };
     bool result = false;
 
@@ -86,6 +94,7 @@ int main()
         printf("SD: Reading data ... ");
         FILE *f = fopen(sd_file_path, "r");
         if (f) {
+              read_result = true;
             for (int i = 0; i < DATA_SIZE; i++) {
                 uint8_t data = fgetc(f);
                 if (data != data_written[i]) {
@@ -99,5 +108,5 @@ int main()
     }
 
     result = write_result && read_result;
-    notify_completion(result);
+    MBED_HOSTTEST_RESULT(result);
 }
