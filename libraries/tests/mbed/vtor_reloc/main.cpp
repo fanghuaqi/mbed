@@ -4,17 +4,35 @@
 
 #include "test_env.h"
 #include "cmsis_nvic.h"
+#include "toolchain.h"
 #include <string.h>
 
+#if defined(TARGET_SAMR21G18A) || defined(TARGET_SAMD21J18A) || defined(TARGET_SAMD21G18A) 
+#define PIN_IN      (PB02)
+#define PIN_OUT     (PB03)
+#define NUM_VECTORS (16+28)
+
+#elif defined(TARGET_SAML21J18A)
+#define PIN_IN      (PB00)
+#define PIN_OUT     (PB01)
+#define NUM_VECTORS (16+29)
+
+#elif defined(TARGET_SAMG55J19)
+#define PIN_IN      (PA17)
+#define PIN_OUT     (PA18)
+#define NUM_VECTORS (16+50)
+
+#else
 #define PIN_IN      (p5)
 #define PIN_OUT     (p25)
 #define NUM_VECTORS (16+33)
+#endif
 
 DigitalOut out(PIN_OUT);
 DigitalOut myled(LED1);
 
 volatile int checks = 0;
-uint32_t int_table[NUM_VECTORS] __attribute__ ((aligned(256)));
+uint32_t int_table[NUM_VECTORS] MBED_ALIGN(256);
 
 #define FALLING_EDGE_COUNT 5
 
