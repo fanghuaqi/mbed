@@ -1,46 +1,64 @@
+"""The generic interface for all exporters.
 """
-mbed SDK
-Copyright (c) 2011-2013 ARM Limited
+# mbed SDK
+# Copyright (c) 2011-2016 ARM Limited
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+import sys
+from os.path import join, abspath, dirname, exists
+from os.path import basename, relpath, normpath, splitext
+from os import makedirs, walk
+import copy
+from shutil import rmtree
+import zipfile
+ROOT = abspath(join(dirname(__file__), ".."))
+sys.path.insert(0, ROOT)
 
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-"""
-import os, tempfile
-from os.path import join, exists, basename
-from shutil import copytree, rmtree, copy
-import yaml
-
-from tools.utils import mkdir
-from tools.export import uvision4, uvision5, codered, gccarm, ds5_5, iar, emblocks, coide, kds, zip, simplicityv3, atmelstudio, sw4stm32, e2studio
-from tools.export.exporters import zip_working_directory_and_clean_up, OldLibrariesException, FailedBuildException
-from tools.targets import TARGET_NAMES, EXPORT_MAP, TARGET_MAP
-
-from project_generator_definitions.definitions import ProGenDef
+from tools.build_api import prepare_toolchain
+from tools.build_api import scan_resources
+from tools.toolchains import Resources
+from tools.export import lpcxpresso, ds5_5, iar, makefile
+from tools.export import embitz, coide, kds, simplicity, atmelstudio
+from tools.export import sw4stm32, e2studio, zip, cmsis, uvision, cdt
+from tools.export import gnuarmeclipse
+from tools.export import qtcreator
+from tools.targets import TARGET_NAMES
 
 EXPORTERS = {
-    'uvision': uvision4.Uvision4,
-    'uvision4': uvision4.Uvision4,
-    'uvision5': uvision5.Uvision5,
-    'lpcxpresso': codered.CodeRed,
-    'gcc_arm': gccarm.GccArm,
+    'uvision5': uvision.Uvision,
+    'uvision': uvision.Uvision,
+    'lpcxpresso': lpcxpresso.LPCXpresso,
+    'gcc_arm': makefile.GccArm,
+    'make_gcc_arm': makefile.GccArm,
+    'make_armc5': makefile.Armc5,
+    'make_iar': makefile.IAR,
     'ds5_5': ds5_5.DS5_5,
-    'iar': iar.IAREmbeddedWorkbench,
-    'emblocks' : emblocks.IntermediateFile,
+    'iar': iar.IAR,
+    'embitz' : embitz.EmBitz,
     'coide' : coide.CoIDE,
     'kds' : kds.KDS,
-    'simplicityv3' : simplicityv3.SimplicityV3,
+    'simplicityv3' : simplicity.SimplicityV3,
     'atmelstudio' : atmelstudio.AtmelStudio,
     'sw4stm32'    : sw4stm32.Sw4STM32,
     'e2studio' : e2studio.E2Studio,
+    'eclipse_gcc_arm'  : cdt.EclipseGcc,
+    'eclipse_iar'      : cdt.EclipseIAR,
+    'eclipse_armc5'    : cdt.EclipseArmc5,
+    'gnuarmeclipse': gnuarmeclipse.GNUARMEclipse,
+    'qtcreator': qtcreator.QtCreator,
+    'zip' : zip.ZIP,
+    'cmsis'    : cmsis.CMSIS
 }
 
 ERROR_MESSAGE_UNSUPPORTED_TOOLCHAIN = """
@@ -52,162 +70,33 @@ ERROR_MESSAGE_NOT_EXPORT_LIBS = """
 To export this project please <a href='http://mbed.org/compiler/?import=http://mbed.org/users/mbed_official/code/mbed-export/k&mode=lib' target='_blank'>import the export version of the mbed library</a>.
 """
 
-def online_build_url_resolver(url):
-    # TODO: Retrieve the path and name of an online library build URL
-    return {'path':'', 'name':''}
+def mcu_ide_list():
+    """Shows list of exportable ides 
 
-
-def export(project_path, project_name, ide, target, destination='/tmp/',
-           tempdir=None, pgen_build = False, clean=True, extra_symbols=None, make_zip=True, sources_relative=False,
-           build_url_resolver=online_build_url_resolver, progen_build=False):
-    # Convention: we are using capitals for toolchain and target names
-    if target is not None:
-        target = target.upper()
-
-    if tempdir is None:
-        tempdir = tempfile.mkdtemp()
-
-    use_progen = False
-    supported = True
-    report = {'success': False, 'errormsg':'', 'skip': False}
-
-    if ide is None or ide == "zip":
-        # Simple ZIP exporter
-        try:
-            ide = "zip"
-            exporter = zip.ZIP(target, tempdir, project_name, build_url_resolver, extra_symbols=extra_symbols)
-            exporter.scan_and_copy_resources(project_path, tempdir, sources_relative)
-            exporter.generate()
-            report['success'] = True
-        except OldLibrariesException, e:
-            report['errormsg'] = ERROR_MESSAGE_NOT_EXPORT_LIBS
-    else:
-        if ide not in EXPORTERS:
-            report['errormsg'] = ERROR_MESSAGE_UNSUPPORTED_TOOLCHAIN % (target, ide)
-            report['skip'] = True
-        else:
-            Exporter = EXPORTERS[ide]
-            target = EXPORT_MAP.get(target, target)
-            try:
-                if Exporter.PROGEN_ACTIVE:
-                    use_progen = True
-            except AttributeError:
-                pass
-
-            if target not in Exporter.TARGETS or Exporter.TOOLCHAIN not in TARGET_MAP[target].supported_toolchains:
-                supported = False
-
-            if use_progen:
-                if not ProGenDef(ide).is_supported(TARGET_MAP[target].progen['target']):
-                    supported = False
-
-            if supported:
-                # target checked, export
-                try:
-                    exporter = Exporter(target, tempdir, project_name, build_url_resolver, extra_symbols=extra_symbols, sources_relative=sources_relative)
-                    exporter.scan_and_copy_resources(project_path, tempdir, sources_relative)
-                    if progen_build:
-                        #try to build with pgen ide builders
-                        try:
-                            exporter.generate(progen_build=True)
-                            report['success'] = True
-                        except FailedBuildException, f:
-                            report['errormsg'] = "Build Failed"
-                    else:
-                        exporter.generate()
-                        report['success'] = True
-                except OldLibrariesException, e:
-                    report['errormsg'] = ERROR_MESSAGE_NOT_EXPORT_LIBS
-
-            else:
-                report['errormsg'] = ERROR_MESSAGE_UNSUPPORTED_TOOLCHAIN % (target, ide)
-                report['skip'] = True
-
-    zip_path = None
-    if report['success']:
-        # readme.txt to contain more exported data
-        exporter_yaml = { 
-            'project_generator': {
-                'active' : False,
-            }
-        }
-        if use_progen:
-            try:
-                import pkg_resources
-                version = pkg_resources.get_distribution('project_generator').version
-                exporter_yaml['project_generator']['version'] = version
-                exporter_yaml['project_generator']['active'] =  True;
-                exporter_yaml['project_generator_definitions'] = {}
-                version = pkg_resources.get_distribution('project_generator_definitions').version
-                exporter_yaml['project_generator_definitions']['version'] = version
-            except ImportError:
-                pass
-        with open(os.path.join(tempdir, 'exporter.yaml'), 'w') as outfile:
-            yaml.dump(exporter_yaml, outfile, default_flow_style=False)
-        # add readme file to every offline export.
-        open(os.path.join(tempdir, 'GettingStarted.htm'),'w').write('<meta http-equiv="refresh" content="0; url=http://mbed.org/handbook/Getting-Started-mbed-Exporters#%s"/>'% (ide))
-        # copy .hgignore file to exported direcotry as well.
-        if exists(os.path.join(exporter.TEMPLATE_DIR,'.hgignore')):
-            copy(os.path.join(exporter.TEMPLATE_DIR,'.hgignore'), tempdir)
-        if make_zip:
-            zip_path = zip_working_directory_and_clean_up(tempdir, destination, project_name, clean)
-        else:
-            zip_path = destination
-
-    return zip_path, report
-
-
-###############################################################################
-# Generate project folders following the online conventions
-###############################################################################
-def copy_tree(src, dst, clean=True):
-    if exists(dst):
-        if clean:
-            rmtree(dst)
-        else:
-            return
-
-    copytree(src, dst)
-
-
-def setup_user_prj(user_dir, prj_path, lib_paths=None):
     """
-    Setup a project with the same directory structure of the mbed online IDE
+    supported_ides = sorted(EXPORTERS.keys())
+    return "\n".join(supported_ides)
+
+
+def mcu_ide_matrix(verbose_html=False):
+    """Shows target map using prettytable
+
+    Keyword argumets:
+    verbose_html - print the matrix in html format
     """
-    mkdir(user_dir)
-
-    # Project Path
-    copy_tree(prj_path, join(user_dir, "src"))
-
-    # Project Libraries
-    user_lib = join(user_dir, "lib")
-    mkdir(user_lib)
-
-    if lib_paths is not None:
-        for lib_path in lib_paths:
-            copy_tree(lib_path, join(user_lib, basename(lib_path)))
-
-def mcu_ide_matrix(verbose_html=False, platform_filter=None):
-    """  Shows target map using prettytable """
-    supported_ides = []
-    for key in EXPORTERS.iterkeys():
-        supported_ides.append(key)
-    supported_ides.sort()
-    from prettytable import PrettyTable, ALL # Only use it in this function so building works without extra modules
+    supported_ides = sorted(EXPORTERS.keys())
+    # Only use it in this function so building works without extra modules
+    from prettytable import PrettyTable, ALL
 
     # All tests status table print
-    columns = ["Platform"] + supported_ides
-    pt = PrettyTable(columns)
+    table_printer = PrettyTable(["Platform"] + supported_ides)
     # Align table
-    for col in columns:
-        pt.align[col] = "c"
-    pt.align["Platform"] = "l"
+    for col in supported_ides:
+        table_printer.align[col] = "c"
+    table_printer.align["Platform"] = "l"
 
     perm_counter = 0
-    target_counter = 0
     for target in sorted(TARGET_NAMES):
-        target_counter += 1
-
         row = [target]  # First column is platform name
         for ide in supported_ides:
             text = "-"
@@ -218,20 +107,244 @@ def mcu_ide_matrix(verbose_html=False, platform_filter=None):
                     text = "x"
                 perm_counter += 1
             row.append(text)
-        pt.add_row(row)
+        table_printer.add_row(row)
 
-    pt.border = True
-    pt.vrules = ALL
-    pt.hrules = ALL
-    # creates a html page suitable for a browser
-    # result = pt.get_html_string(format=True) if verbose_html else pt.get_string()
+    table_printer.border = True
+    table_printer.vrules = ALL
+    table_printer.hrules = ALL
     # creates a html page in a shorter format suitable for readme.md
-    result = pt.get_html_string() if verbose_html else pt.get_string()
+    if verbose_html:
+        result = table_printer.get_html_string()
+    else:
+        result = table_printer.get_string()
     result += "\n"
     result += "Total IDEs: %d\n"% (len(supported_ides))
-    if verbose_html: result += "<br>"
-    result += "Total platforms: %d\n"% (target_counter)
-    if verbose_html: result += "<br>"
+    if verbose_html:
+        result += "<br>"
+    result += "Total platforms: %d\n"% (len(TARGET_NAMES))
+    if verbose_html:
+        result += "<br>"
     result += "Total permutations: %d"% (perm_counter)
-    if verbose_html: result = result.replace("&amp;", "&")
+    if verbose_html:
+        result = result.replace("&amp;", "&")
     return result
+
+
+def get_exporter_toolchain(ide):
+    """ Return the exporter class and the toolchain string as a tuple
+
+    Positional arguments:
+    ide - the ide name of an exporter
+    """
+    return EXPORTERS[ide], EXPORTERS[ide].TOOLCHAIN
+
+
+def rewrite_basepath(file_name, resources, export_path, loc):
+    """ Replace the basepath of filename with export_path
+
+    Positional arguments:
+    file_name - the absolute path to a file
+    resources - the resources object that the file came from
+    export_path - the final destination of the file after export
+    """
+    new_f = join(loc, relpath(file_name, resources.file_basepath[file_name]))
+    resources.file_basepath[new_f] = export_path
+    return new_f
+
+
+def subtract_basepath(resources, export_path, loc=""):
+    """ Rewrite all of the basepaths with the export_path
+
+    Positional arguments:
+    resources - the resource object to rewrite the basepaths of
+    export_path - the final destination of the resources with respect to the
+      generated project files
+    """
+    keys = ['s_sources', 'c_sources', 'cpp_sources', 'hex_files',
+            'objects', 'libraries', 'inc_dirs', 'headers', 'linker_script',
+            'lib_dirs']
+    for key in keys:
+        vals = getattr(resources, key)
+        if isinstance(vals, set):
+            vals = list(vals)
+        if isinstance(vals, list):
+            new_vals = []
+            for val in vals:
+                new_vals.append(rewrite_basepath(val, resources, export_path,
+                                                 loc))
+            if isinstance(getattr(resources, key), set):
+                setattr(resources, key, set(new_vals))
+            else:
+                setattr(resources, key, new_vals)
+        elif vals:
+            setattr(resources, key, rewrite_basepath(vals, resources,
+                                                     export_path, loc))
+
+
+def generate_project_files(resources, export_path, target, name, toolchain, ide,
+                           macros=None):
+    """Generate the project files for a project
+
+    Positional arguments:
+    resources - a Resources object containing all of the files needed to build
+      this project
+    export_path - location to place project files
+    name - name of the project
+    toolchain - a toolchain class that corresponds to the toolchain used by the
+      IDE or makefile
+    ide - IDE name to export to
+
+    Optional arguments:
+    macros - additional macros that should be defined within the exported
+      project
+    """
+    exporter_cls, _ = get_exporter_toolchain(ide)
+    exporter = exporter_cls(target, export_path, name, toolchain,
+                            extra_symbols=macros, resources=resources)
+    exporter.generate()
+    files = exporter.generated_files
+    return files, exporter
+
+
+def zip_export(file_name, prefix, resources, project_files, inc_repos):
+    """Create a zip file from an exported project.
+
+    Positional Parameters:
+    file_name - the file name of the resulting zip file
+    prefix - a directory name that will prefix the entire zip file's contents
+    resources - a resources object with files that must be included in the zip
+    project_files - a list of extra files to be added to the root of the prefix
+      directory
+    """
+    with zipfile.ZipFile(file_name, "w") as zip_file:
+        for prj_file in project_files:
+            zip_file.write(prj_file, join(prefix, basename(prj_file)))
+        for loc, res in resources.iteritems():
+            to_zip = (
+                res.headers + res.s_sources + res.c_sources +\
+                res.cpp_sources + res.libraries + res.hex_files + \
+                [res.linker_script] + res.bin_files + res.objects + \
+                res.json_files + res.lib_refs + res.lib_builds)
+            if inc_repos:
+                for directory in res.repo_dirs:
+                    for root, _, files in walk(directory):
+                        for repo_file in files:
+                            source = join(root, repo_file)
+                            to_zip.append(source)
+                            res.file_basepath[source] = res.base_path
+                to_zip += res.repo_files
+            for source in to_zip:
+                if source:
+                    zip_file.write(
+                        source,
+                        join(prefix, loc,
+                             relpath(source, res.file_basepath[source])))
+            for source in res.lib_builds:
+                target_dir, _ = splitext(source)
+                dest = join(prefix, loc,
+                            relpath(target_dir, res.file_basepath[source]),
+                            ".bld", "bldrc")
+                zip_file.write(source, dest)
+
+
+
+def export_project(src_paths, export_path, target, ide, libraries_paths=None,
+                   linker_script=None, notify=None, verbose=False, name=None,
+                   inc_dirs=None, jobs=1, silent=False, extra_verbose=False,
+                   config=None, macros=None, zip_proj=None, inc_repos=False,
+                   build_profile=None):
+    """Generates a project file and creates a zip archive if specified
+
+    Positional Arguments:
+    src_paths - a list of paths from which to find source files
+    export_path - a path specifying the location of generated project files
+    target - the mbed board/mcu for which to generate the executable
+    ide - the ide for which to generate the project fields
+
+    Keyword Arguments:
+    libraries_paths - paths to additional libraries
+    linker_script - path to the linker script for the specified target
+    notify - function is passed all events, and expected to handle notification
+      of the user, emit the events to a log, etc.
+    verbose - assigns the notify function to toolchains print_notify_verbose
+    name - project name
+    inc_dirs - additional include directories
+    jobs - number of threads
+    silent - silent build - no output
+    extra_verbose - assigns the notify function to toolchains
+      print_notify_verbose
+    config - toolchain's config object
+    macros - User-defined macros
+    zip_proj - string name of the zip archive you wish to creat (exclude arg
+     if you do not wish to create an archive
+    """
+
+    # Convert src_path to a list if needed
+    if isinstance(src_paths, dict):
+        paths = sum(src_paths.values(), [])
+    elif isinstance(src_paths, list):
+        paths = src_paths[:]
+    else:
+        paths = [src_paths]
+
+    # Extend src_paths wit libraries_paths
+    if libraries_paths is not None:
+        paths.extend(libraries_paths)
+
+    if not isinstance(src_paths, dict):
+        src_paths = {"": paths}
+
+    # Export Directory
+    if not exists(export_path):
+        makedirs(export_path)
+
+    _, toolchain_name = get_exporter_toolchain(ide)
+
+    # Pass all params to the unified prepare_resources()
+    toolchain = prepare_toolchain(
+        paths, "", target, toolchain_name, macros=macros, jobs=jobs,
+        notify=notify, silent=silent, verbose=verbose,
+        extra_verbose=extra_verbose, config=config, build_profile=build_profile)
+    # The first path will give the name to the library
+    if name is None:
+        name = basename(normpath(abspath(src_paths[0])))
+
+    # Call unified scan_resources
+    resource_dict = {loc: scan_resources(path, toolchain, inc_dirs=inc_dirs)
+                     for loc, path in src_paths.iteritems()}
+    resources = Resources()
+    toolchain.build_dir = export_path
+    config_header = toolchain.get_config_header()
+    resources.headers.append(config_header)
+    resources.file_basepath[config_header] = dirname(config_header)
+
+    if zip_proj:
+        subtract_basepath(resources, ".")
+        for loc, res in resource_dict.iteritems():
+            temp = copy.deepcopy(res)
+            subtract_basepath(temp, ".", loc)
+            resources.add(temp)
+    else:
+        for _, res in resource_dict.iteritems():
+            resources.add(res)
+
+    # Change linker script if specified
+    if linker_script is not None:
+        resources.linker_script = linker_script
+
+    files, exporter = generate_project_files(resources, export_path,
+                                             target, name, toolchain, ide,
+                                             macros=macros)
+    files.append(config_header)
+    if zip_proj:
+        for resource in resource_dict.values():
+            for label, res in resource.features.iteritems():
+                if label not in toolchain.target.features:
+                    resource.add(res)
+        if isinstance(zip_proj, basestring):
+            zip_export(join(export_path, zip_proj), name, resource_dict, files,
+                       inc_repos)
+        else:
+            zip_export(zip_proj, name, resource_dict, files, inc_repos)
+
+    return exporter

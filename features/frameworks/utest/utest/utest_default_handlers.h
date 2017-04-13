@@ -26,6 +26,8 @@
 
 
 namespace utest {
+/** \addtogroup frameworks */
+/** @{*/
 namespace v1 {
 
     /** Default handler hint.
@@ -185,9 +187,11 @@ namespace v1 {
     extern const handlers_t selftest_handlers;
 
     /// The greentea aborting handlers are the default
-    const handlers_t default_handlers = greentea_abort_handlers;
+    extern const handlers_t& default_handlers;
 
 }   // namespace v1
 }   // namespace utest
 
 #endif // UTEST_DEFAULT_HANDLER_H
+
+/** @}*/

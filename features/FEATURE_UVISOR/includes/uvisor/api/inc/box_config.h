@@ -18,10 +18,13 @@
 #define __UVISOR_API_BOX_CONFIG_H__
 
 #include "api/inc/uvisor_exports.h"
+#include "api/inc/page_allocator_exports.h"
+#include "api/inc/rpc_exports.h"
 #include <stddef.h>
 #include <stdint.h>
 
 UVISOR_EXTERN const uint32_t __uvisor_mode;
+UVISOR_EXTERN void const * const public_box_cfg_ptr;
 
 #define UVISOR_DISABLED   0
 #define UVISOR_PERMISSIVE 1
@@ -38,20 +41,31 @@ UVISOR_EXTERN const uint32_t __uvisor_mode;
     \
     UVISOR_EXTERN const uint32_t __uvisor_mode = (mode); \
     \
-    static const __attribute__((section(".keep.uvisor.cfgtbl"), aligned(4))) UvisorBoxConfig main_cfg = { \
+    static const __attribute__((section(".keep.uvisor.cfgtbl"), aligned(4))) UvisorBoxConfig public_box_cfg = { \
         UVISOR_BOX_MAGIC, \
         UVISOR_BOX_VERSION, \
+        { \
+            sizeof(RtxBoxIndex), \
+            0, \
+            sizeof(uvisor_rpc_t), \
+            0, \
+        }, \
         0, \
-        sizeof(RtxBoxIndex), \
-        0, \
-        0, \
-        0, \
+        NULL, \
         NULL, \
         acl_list, \
         acl_list_count \
     }; \
     \
-    extern const __attribute__((section(".keep.uvisor.cfgtbl_ptr_first"), aligned(4))) void * const main_cfg_ptr = &main_cfg;
+    UVISOR_EXTERN const __attribute__((section(".keep.uvisor.cfgtbl_ptr_first"), aligned(4))) void * const public_box_cfg_ptr = &public_box_cfg;
+
+/* Creates a global page heap with at least `minimum_number_of_pages` each of size `page_size` in bytes.
+ * The total page heap size is at least `minimum_number_of_pages * page_size`. */
+#define UVISOR_SET_PAGE_HEAP(page_size, minimum_number_of_pages) \
+    const uint32_t __uvisor_page_size = (page_size); \
+    uint8_t __attribute__((section(".keep.uvisor.page_heap"))) \
+        public_page_heap_reserved[ (page_size) * (minimum_number_of_pages) ]
+
 
 /* this macro selects an overloaded macro (variable number of arguments) */
 #define __UVISOR_BOX_MACRO(_1, _2, _3, _4, NAME, ...) NAME
@@ -65,7 +79,10 @@ UVISOR_EXTERN const uint32_t __uvisor_mode;
                     (UVISOR_MIN_STACK(stack_size) + \
                     (context_size) + \
                     (__uvisor_box_heapsize) + \
-                    sizeof(RtxBoxIndex) \
+                    sizeof(RtxBoxIndex) + \
+                    sizeof(uvisor_rpc_outgoing_message_queue_t) + \
+                    sizeof(uvisor_rpc_incoming_message_queue_t) + \
+                    sizeof(uvisor_rpc_fn_group_queue_t) \
                 ) \
             * 8) \
         / 6)]; \
@@ -73,17 +90,23 @@ UVISOR_EXTERN const uint32_t __uvisor_mode;
     static const __attribute__((section(".keep.uvisor.cfgtbl"), aligned(4))) UvisorBoxConfig box_name ## _cfg = { \
         UVISOR_BOX_MAGIC, \
         UVISOR_BOX_VERSION, \
+        { \
+            sizeof(RtxBoxIndex), \
+            context_size, \
+            sizeof(uvisor_rpc_t), \
+            __uvisor_box_heapsize, \
+        }, \
         UVISOR_MIN_STACK(stack_size), \
-        sizeof(RtxBoxIndex), \
-        context_size, \
-        __uvisor_box_heapsize, \
         __uvisor_box_lib_config, \
         __uvisor_box_namespace, \
         acl_list, \
         acl_list_count \
     }; \
     \
-    extern const __attribute__((section(".keep.uvisor.cfgtbl_ptr"), aligned(4))) void * const box_name ## _cfg_ptr = &box_name ## _cfg;
+    UVISOR_EXTERN const __attribute__((section(".keep.uvisor.cfgtbl_ptr"), aligned(4))) void * const box_name ## _cfg_ptr = &box_name ## _cfg;
+
+#define UVISOR_BOX_EXTERN(box_name) \
+    UVISOR_EXTERN const __attribute__((section(".keep.uvisor.cfgtbl_ptr"), aligned(4))) void * const box_name ## _cfg_ptr;
 
 #define __UVISOR_BOX_CONFIG_NOCONTEXT(box_name, acl_list, stack_size) \
     __UVISOR_BOX_CONFIG(box_name, acl_list, UVISOR_ARRAY_COUNT(acl_list), stack_size, 0) \
@@ -128,22 +151,6 @@ UVISOR_EXTERN const uint32_t __uvisor_mode;
 #define UVISOR_BOX_HEAPSIZE(heap_size) \
     static const uint32_t __uvisor_box_heapsize = heap_size;
 
-#define uvisor_ctx (*__uvisor_ps)
-
-/* Return the numeric box ID of the current box. */
-UVISOR_EXTERN int uvisor_box_id_self(void);
-
-/* Return the numeric box ID of the box that is calling through the most recent
- * secure gateway. Return -1 if there is no secure gateway calling box. */
-UVISOR_EXTERN int uvisor_box_id_caller(void);
-
-/* Copy the box namespace of the specified box ID to the memory provided by
- * box_namespace. The box_namespace's length must be at least
- * MAX_BOX_NAMESPACE_LENGTH bytes. Return how many bytes were copied into
- * box_namespace. Return UVISOR_ERROR_INVALID_BOX_ID if the provided box ID is
- * invalid. Return UVISOR_ERROR_BUFFER_TOO_SMALL if the provided box_namespace
- * is too small to hold MAX_BOX_NAMESPACE_LENGTH bytes. Return
- * UVISOR_ERROR_BOX_NAMESPACE_ANONYMOUS if the box is anonymous. */
-UVISOR_EXTERN int uvisor_box_namespace(int box_id, char *box_namespace, size_t length);
+#define __uvisor_ctx (((UvisorBoxIndex *) __uvisor_ps)->bss.address_of.context)
 
 #endif /* __UVISOR_API_BOX_CONFIG_H__ */

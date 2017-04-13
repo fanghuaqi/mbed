@@ -16,6 +16,7 @@ limitations under the License.
 """
 import re
 from os.path import join, basename, splitext, dirname, exists
+from distutils.spawn import find_executable
 
 from tools.toolchains import mbedToolchain, TOOLCHAIN_PATHS
 from tools.hooks import hook_tool
@@ -25,25 +26,27 @@ class GCC(mbedToolchain):
     LIBRARY_EXT = '.a'
 
     STD_LIB_NAME = "lib%s.a"
-    DIAGNOSTIC_PATTERN = re.compile('((?P<file>[^:]+):(?P<line>\d+):)(\d+:)? (?P<severity>warning|error): (?P<message>.+)')
+    DIAGNOSTIC_PATTERN = re.compile('((?P<file>[^:]+):(?P<line>\d+):)(\d+:)? (?P<severity>warning|[eE]rror|fatal error): (?P<message>.+)')
     INDEX_PATTERN  = re.compile('(?P<col>\s*)\^')
 
-    DEFAULT_FLAGS = {
-        'common': ["-c", "-Wall", "-Wextra",
-            "-Wno-unused-parameter", "-Wno-missing-field-initializers",
-            "-fmessage-length=0", "-fno-exceptions", "-fno-builtin",
-            "-ffunction-sections", "-fdata-sections", "-funsigned-char",
-            "-MMD", "-fno-delete-null-pointer-checks", "-fomit-frame-pointer"
-            ],
-        'asm': ["-x", "assembler-with-cpp"],
-        'c': ["-std=gnu99"],
-        'cxx': ["-std=gnu++98", "-fno-rtti", "-Wvla"],
-        'ld': ["-Wl,--gc-sections", "-Wl,--wrap,main",
-            "-Wl,--wrap,_malloc_r", "-Wl,--wrap,_free_r", "-Wl,--wrap,_realloc_r"],
-    }
+    def __init__(self, target,  notify=None, macros=None,
+                 silent=False, extra_verbose=False, build_profile=None,
+                 build_dir=None):
+        mbedToolchain.__init__(self, target, notify, macros, silent,
+                               extra_verbose=extra_verbose,
+                               build_profile=build_profile, build_dir=build_dir)
 
-    def __init__(self, target, options=None, notify=None, macros=None, silent=False, tool_path="", extra_verbose=False):
-        mbedToolchain.__init__(self, target, options, notify, macros, silent, extra_verbose=extra_verbose)
+        tool_path=TOOLCHAIN_PATHS['GCC_ARM']
+        # Add flags for current size setting
+        default_lib = "std"
+        if hasattr(target, "default_lib"):
+            default_lib = target.default_lib
+        elif hasattr(target, "default_build"): # Legacy
+            default_lib = target.default_build
+
+        if default_lib == "small":
+            self.flags["common"].append("-DMBED_RTOS_SINGLE_THREAD")
+            self.flags["ld"].append("--specs=nano.specs")
 
         if target.core == "Cortex-M0+":
             cpu = "cortex-m0plus"
@@ -57,7 +60,7 @@ class GCC(mbedToolchain):
             cpu = target.core.lower()
 
         self.cpu = ["-mcpu=%s" % cpu]
-        if target.core.startswith("Cortex"):
+        if target.core.startswith("Cortex-M"):
             self.cpu.append("-mthumb")
 
         # FPU handling, M7 possibly to have double FPU
@@ -71,8 +74,6 @@ class GCC(mbedToolchain):
             self.cpu.append("-mfpu=fpv5-d16")
             self.cpu.append("-mfloat-abi=softfp")
 
-
-
         if target.core == "Cortex-A9":
             self.cpu.append("-mthumb-interwork")
             self.cpu.append("-marm")
@@ -81,19 +82,7 @@ class GCC(mbedToolchain):
             self.cpu.append("-mfloat-abi=hard")
             self.cpu.append("-mno-unaligned-access")
 
-
-        # Note: We are using "-O2" instead of "-Os" to avoid this known GCC bug:
-        # http://gcc.gnu.org/bugzilla/show_bug.cgi?id=46762
         self.flags["common"] += self.cpu
-
-        if "save-asm" in self.options:
-            self.flags["common"].append("-save-temps")
-
-        if "debug-info" in self.options:
-            self.flags["common"].append("-g")
-            self.flags["common"].append("-O0")
-        else:
-            self.flags["common"].append("-Os")
 
         main_cc = join(tool_path, "arm-none-eabi-gcc")
         main_cppc = join(tool_path, "arm-none-eabi-g++")
@@ -105,7 +94,8 @@ class GCC(mbedToolchain):
 
         self.flags['ld'] += self.cpu
         self.ld = [join(tool_path, "arm-none-eabi-gcc")] + self.flags['ld']
-        self.sys_libs = ["stdc++", "supc++", "m", "c", "gcc"]
+        self.sys_libs = ["stdc++", "supc++", "m", "c", "gcc", "nosys"]
+        self.preproc = [join(tool_path, "arm-none-eabi-cpp"), "-E", "-P"]
 
         self.ar = join(tool_path, "arm-none-eabi-ar")
         self.elf2bin = join(tool_path, "arm-none-eabi-objcopy")
@@ -138,10 +128,11 @@ class GCC(mbedToolchain):
         # The warning/error notification is multiline
         msg = None
         for line in output.splitlines():
-            match = GCC.DIAGNOSTIC_PATTERN.match(line)
+            match = self.DIAGNOSTIC_PATTERN.search(line)
             if match is not None:
                 if msg is not None:
                     self.cc_info(msg)
+                    msg = None
                 msg = {
                     'severity': match.group('severity').lower(),
                     'file': match.group('file'),
@@ -154,13 +145,16 @@ class GCC(mbedToolchain):
                 }
             elif msg is not None:
                 # Determine the warning/error column by calculating the ^ position
-                match = GCC.INDEX_PATTERN.match(line)
+                match = self.INDEX_PATTERN.match(line)
                 if match is not None:
                     msg['col'] = len(match.group('col'))
                     self.cc_info(msg)
                     msg = None
                 else:
                     msg['text'] += line+"\n"
+
+        if msg is not None:
+            self.cc_info(msg)
 
     def get_dep_option(self, object):
         base, _ = splitext(object)
@@ -222,6 +216,15 @@ class GCC(mbedToolchain):
             libs.append("-l%s" % name[3:])
         libs.extend(["-l%s" % l for l in self.sys_libs])
 
+        # Preprocess
+        if mem_map:
+            preproc_output = join(dirname(output), ".link_script.ld")
+            cmd = (self.preproc + [mem_map] + self.ld[1:] +
+                   [ "-o", preproc_output])
+            self.cc_verbose("Preproc: %s" % ' '.join(cmd))
+            self.default_cmd(cmd)
+            mem_map = preproc_output
+
         # Build linker command
         map_file = splitext(output)[0] + ".map"
         cmd = self.ld + ["-o", output, "-Wl,-Map=%s" % map_file] + objects + ["-Wl,--start-group"] + libs + ["-Wl,--end-group"]
@@ -258,7 +261,9 @@ class GCC(mbedToolchain):
     @hook_tool
     def binary(self, resources, elf, bin):
         # Build binary command
-        cmd = [self.elf2bin, "-O", "binary", elf, bin]
+        _, fmt = splitext(bin)
+        bin_arg = {'.bin': 'binary', '.hex': 'ihex'}[fmt]
+        cmd = [self.elf2bin, "-O", bin_arg, elf, bin]
 
         # Call cmdline hook
         cmd = self.hook.get_cmdline_binary(cmd)
@@ -267,44 +272,32 @@ class GCC(mbedToolchain):
         self.cc_verbose("FromELF: %s" % ' '.join(cmd))
         self.default_cmd(cmd)
 
+    @staticmethod
+    def name_mangle(name):
+        return "_Z%i%sv" % (len(name), name)
+
+    @staticmethod
+    def make_ld_define(name, value):
+        return "-D%s=0x%x" % (name, value)
+
+    @staticmethod
+    def redirect_symbol(source, sync, build_dir):
+        return "-Wl,--defsym=%s=%s" % (source, sync)
+
+    @staticmethod
+    def check_executable():
+        """Returns True if the executable (arm-none-eabi-gcc) location
+        specified by the user exists OR the executable can be found on the PATH.
+        Returns False otherwise."""
+        if not TOOLCHAIN_PATHS['GCC_ARM'] or not exists(TOOLCHAIN_PATHS['GCC_ARM']):
+            if find_executable('arm-none-eabi-gcc'):
+                TOOLCHAIN_PATHS['GCC_ARM'] = ''
+                return True
+            else:
+                return False
+        else:
+            exec_name = join(TOOLCHAIN_PATHS['GCC_ARM'], 'arm-none-eabi-gcc')
+            return exists(exec_name) or exists(exec_name + '.exe')
 
 class GCC_ARM(GCC):
-    def __init__(self, target, options=None, notify=None, macros=None, silent=False, extra_verbose=False):
-        GCC.__init__(self, target, options, notify, macros, silent, TOOLCHAIN_PATHS['GCC_ARM'], extra_verbose=extra_verbose)
-
-        # Use latest gcc nanolib
-        if "big-build" in self.options:
-            use_nano = False
-        elif "small-build" in self.options:
-            use_nano = True
-        elif target.default_build == "standard":
-            use_nano = False
-        elif target.default_build == "small":
-            use_nano = True
-        else:
-            use_nano = False
-
-        if use_nano:
-            self.ld.append("--specs=nano.specs")
-            self.flags['ld'].append("--specs=nano.specs")
-            self.cc += ["-DMBED_RTOS_SINGLE_THREAD"]
-            self.cppc += ["-DMBED_RTOS_SINGLE_THREAD"]
-            self.macros.extend(["MBED_RTOS_SINGLE_THREAD"])
-        self.sys_libs.append("nosys")
-
-
-class GCC_CR(GCC):
-    def __init__(self, target, options=None, notify=None, macros=None, silent=False, extra_verbose=False):
-        GCC.__init__(self, target, options, notify, macros, silent, TOOLCHAIN_PATHS['GCC_CR'], extra_verbose=extra_verbose)
-
-        additional_compiler_flags = [
-            "-D__NEWLIB__", "-D__CODE_RED", "-D__USE_CMSIS", "-DCPP_USE_HEAP",
-        ]
-        self.cc += additional_compiler_flags
-        self.cppc += additional_compiler_flags
-
-        # Use latest gcc nanolib
-        self.ld.append("--specs=nano.specs")
-        if target.name in ["LPC1768", "LPC4088", "LPC4088_DM", "LPC4330", "UBLOX_C027", "LPC2368"]:
-            self.ld.extend(["-u _printf_float", "-u _scanf_float"])
-        self.ld += ["-nostdlib"]
+    pass

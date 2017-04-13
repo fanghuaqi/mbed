@@ -22,13 +22,7 @@ typedef struct {
  * the C standard library. For GCC, ARM_STD and IAR it is defined with a size of 2048 bytes
  * and for ARM_MICRO 512. Because of reduce RAM size some targets need a reduced stacksize.
  */
-#if (defined(TARGET_STM32L053R8) || defined(TARGET_STM32L053C8)) && defined(TOOLCHAIN_GCC)
-    #define STACK_SIZE DEFAULT_STACK_SIZE/4
-#elif (defined(TARGET_STM32F030R8)) && defined(TOOLCHAIN_GCC)
-    #define STACK_SIZE DEFAULT_STACK_SIZE/2
-#elif (defined(TARGET_STM32F030R8)) && defined(TOOLCHAIN_IAR)
-    #define STACK_SIZE DEFAULT_STACK_SIZE/2
-#elif (defined(TARGET_EFM32HG_STK3400)) && !defined(TOOLCHAIN_ARM_MICRO)
+#if (defined(TARGET_EFM32HG_STK3400)) && !defined(TOOLCHAIN_ARM_MICRO)
     #define STACK_SIZE 512
 #elif (defined(TARGET_EFM32LG_STK3600) || defined(TARGET_EFM32WG_STK3800) || defined(TARGET_EFM32PG_STK3401)) && !defined(TOOLCHAIN_ARM_MICRO)
     #define STACK_SIZE 768
@@ -36,13 +30,15 @@ typedef struct {
     #define STACK_SIZE 1536
 #elif defined(TARGET_MCU_NRF51822) || defined(TARGET_MCU_NRF52832)
     #define STACK_SIZE 768
+#elif defined(TARGET_XDOT_L151CC)
+    #define STACK_SIZE 1024
 #else
     #define STACK_SIZE DEFAULT_STACK_SIZE
 #endif
 
 Mail<mail_t, QUEUE_SIZE> mail_box;
 
-void send_thread (void const *argument) {
+void send_thread () {
     static uint32_t i = 10;
     while (true) {
         i++; // fake data update
@@ -58,7 +54,8 @@ void send_thread (void const *argument) {
 int main (void) {
     GREENTEA_SETUP(20, "default_auto");
 
-    Thread thread(send_thread, NULL, osPriorityNormal, STACK_SIZE);
+    Thread thread(osPriorityNormal, STACK_SIZE);
+    thread.start(send_thread);
     bool result = true;
     int result_counter = 0;
 

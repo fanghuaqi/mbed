@@ -9,6 +9,7 @@
 
 #include <stdint.h>
 #include <assert.h>
+#include <stdio.h>
 
 
 /* Debug Support */

@@ -27,7 +27,7 @@
 #
 
 # Set the mbed TLS release to import (this can/should be edited before import)
-MBED_TLS_RELEASE ?= mbedtls-2.3.0
+MBED_TLS_RELEASE ?= mbedtls-2.4.2
 
 # Translate between mbed TLS namespace and mbed namespace
 TARGET_PREFIX:=../
@@ -66,6 +66,9 @@ deploy: rsync
 	#
 	# Adjusting the default mbed TLS config file to mbed purposes
 	./adjust-config.sh $(MBED_TLS_DIR)/scripts/config.pl $(TARGET_INC)/mbedtls/config.h
+	#
+	# Copy the trimmed config that does not require entropy source
+	cp $(MBED_TLS_DIR)/configs/config-no-entropy.h $(TARGET_INC)/mbedtls/.
 
 update: $(MBED_TLS_GIT_CFG)  $(MBED_TLS_HA_GIT_CFG)
 	#
@@ -90,7 +93,6 @@ clean:
 	rm -f $(TARGET_PREFIX)apache-2.0.txt
 	rm -f $(TARGET_PREFIX)VERSION.txt
 	rm -f $(TARGET_PREFIX)AUTHORS.txt
-	rm -rf $(TARGET_PREFIX)/targets
 	rm -rf $(TARGET_SRC)
 	rm -rf $(TARGET_INC)
 	rm -rf $(MBED_TLS_DIR)

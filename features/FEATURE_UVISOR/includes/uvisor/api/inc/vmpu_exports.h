@@ -18,12 +18,16 @@
 #define __UVISOR_API_VMPU_EXPORTS_H__
 
 #include "api/inc/uvisor_exports.h"
+#include "api/inc/pool_queue_exports.h"
 #include <stdint.h>
 
 /* The maximum box namespace length is 37 so that it is exactly big enough for
  * a human-readable hex string GUID (as formatted by RFC 4122) followed by a
  * terminating NULL. */
 #define UVISOR_MAX_BOX_NAMESPACE_LENGTH 37
+
+/** Invalid box id for use in marking objects with invalid ownership. */
+#define UVISOR_BOX_ID_INVALID ((uint8_t) -1)
 
 /* supervisor user access modes */
 #define UVISOR_TACL_UEXECUTE        0x0001UL
@@ -58,13 +62,6 @@
 #define UVISOR_TACL_IRQ             0x1000UL
 
 #if defined(UVISOR_PRESENT) && UVISOR_PRESENT == 1
-
-/* subregion mask for ARMv7M */
-#if defined(ARCH_MPU_ARMv7M)
-#define UVISOR_TACL_SUBREGIONS_POS  24
-#define UVISOR_TACL_SUBREGIONS_MASK (0xFFUL << UVISOR_TACL_SUBREGIONS_POS)
-#define UVISOR_TACL_SUBREGIONS(x)   ( (((uint32_t) (x)) << UVISOR_TACL_SUBREGIONS_POS) & UVISOR_TACL_SUBREGIONS_MASK )
-#endif
 
 #endif /* defined(UVISOR_PRESENT) && UVISOR_PRESENT == 1 */
 
@@ -155,40 +152,73 @@ typedef struct {
     UvisorBoxAcl acl;
 } UVISOR_PACKED UvisorBoxAclItem;
 
+/* This struct contains all the BSS sections that uVisor allocates for a secure
+ * box. It can be used to keep the sizes of the sections or their pointers. */
+typedef struct uvisor_bss_sections_t {
+    uint32_t index;
+    uint32_t context;
+    uint32_t rpc;
+    uint32_t heap;
+} UVISOR_PACKED UvisorBssSections;
+
+/* The number of per-box BSS sections. */
+#define UVISOR_BSS_SECTIONS_COUNT (sizeof(UvisorBssSections) / sizeof(uint32_t))
+
+/* Compile-time per-box configuration table
+ * Each box has one of this table in flash. Every other data structure that this
+ * table might point to must be in flash as well. The uVisor core must check the
+ * sanity of the table before trusting its fields. */
 typedef struct {
-    uint32_t magic;
-    uint32_t version;
+    const uint32_t magic;
+    const uint32_t version;
 
-    /* Box stack size includes stack guards and rounding buffer. */
-    uint32_t stack_size;
+    /* The UvisorBssSections struct is union-ed with a size_t array to allow for
+     * loops to scan the sizes of all the BSS sections and allocate the
+     * necessary space for each of them. */
+    union {
+        size_t sizes[UVISOR_BSS_SECTIONS_COUNT];
+        UvisorBssSections size_of;
+    } const bss;
 
-    /* Contains the size of the index (must be at least sizeof(UvisorBoxIndex)). */
-    uint32_t index_size;
-    /* Contains user provided size of box context without guards of buffers. */
-    uint32_t context_size;
-    /* Contains user provided size of box heap without guards of buffers. */
-    uint32_t heap_size;
+    /* Contains the size of the secure box static stack. */
+    /* Note: This does not include guards. */
+    /* Note: It is kept separately from the BSS sections as it's implementation
+     *       specific where the stack sits with respect to the BSS. */
+    const uint32_t stack_size;
 
     /* Opaque-to-uVisor data that potentially contains uvisor-lib-specific or
      * OS-specific per-box configuration */
     const void * const lib_config;
 
-    const char * box_namespace;
+    const char * const box_namespace;
     const UvisorBoxAclItem * const acl_list;
-    uint32_t acl_count;
+    const uint32_t acl_count;
 } UVISOR_PACKED UvisorBoxConfig;
 
+/* Enumeration-time per-box index table
+ * Each box has one of this table in SRAM. The index tables are initialized at
+ * box enumeration time and are then managed by the secure boxes themselves. */
+/* Note: Each box is able to read and write its own version of this table. Do
+ *       not trust these pointers in the uVisor core. */
 typedef struct {
-    /* Pointer to the user context */
-    void * ctx;
-    /* Pointer to the box heap */
-    void * box_heap;
+    /* The UvisorSramPointers struct is union-ed with a void * array to allow
+     * for loops to scan the pointers to all the SRAM sections and access them
+     * individually. */
+    union {
+        void * pointers[UVISOR_BSS_SECTIONS_COUNT];
+        UvisorBssSections address_of;
+    } bss;
+
     /* Size of the box heap */
     uint32_t box_heap_size;
     /* Pointer to the currently active heap.
      * This is set to `NULL` by uVisor, signalling to the user lib that the
      * box heap needs to be initialized before use! */
     void * active_heap;
+
+    /* Box ID */
+    int box_id_self;
+
     /* Pointer to the box config */
     const UvisorBoxConfig * config;
 } UVISOR_PACKED UvisorBoxIndex;

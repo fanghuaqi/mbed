@@ -1,256 +1,195 @@
 """Just a template for subclassing"""
-import uuid, shutil, os, logging, fnmatch
-from os import walk, remove
-from os.path import join, dirname, isdir, split
-from copy import copy
-from jinja2 import Template, FileSystemLoader
+import os
+from abc import abstractmethod, ABCMeta
+import logging
+from os.path import join, dirname, relpath, basename, realpath, normpath
+from itertools import groupby
+from jinja2 import FileSystemLoader, StrictUndefined
 from jinja2.environment import Environment
-from contextlib import closing
-from zipfile import ZipFile, ZIP_DEFLATED
-from operator import add
+import copy
 
-from tools.utils import mkdir
-from tools.toolchains import TOOLCHAIN_CLASSES
 from tools.targets import TARGET_MAP
 
-from project_generator.generate import Generator
-from project_generator.project import Project
-from project_generator.settings import ProjectSettings
 
-from tools.config import Config
+class TargetNotSupportedException(Exception):
+    """Indicates that an IDE does not support a particular MCU"""
+    pass
 
-class OldLibrariesException(Exception): pass
-
-class FailedBuildException(Exception) : pass
-
-# Exporter descriptor for TARGETS
-# TARGETS as class attribute for backward compatibility (allows: if in Exporter.TARGETS)
 class ExporterTargetsProperty(object):
+    """ Exporter descriptor for TARGETS
+    TARGETS as class attribute for backward compatibility
+    (allows: if in Exporter.TARGETS)
+    """
     def __init__(self, func):
         self.func = func
     def __get__(self, inst, cls):
         return self.func(cls)
 
 class Exporter(object):
+    """Exporter base class
+
+    This class is meant to be extended by individual exporters, and provides a
+    few helper methods for implementing an exporter with either jinja2 or
+    progen.
+    """
+    __metaclass__ = ABCMeta
     TEMPLATE_DIR = dirname(__file__)
     DOT_IN_RELATIVE_PATH = False
+    NAME = None
+    TARGETS = None
+    TOOLCHAIN = None
 
-    def __init__(self, target, inputDir, program_name, build_url_resolver, extra_symbols=None, sources_relative=True):
-        self.inputDir = inputDir
+
+    def __init__(self, target, export_dir, project_name, toolchain,
+                 extra_symbols=None, resources=None):
+        """Initialize an instance of class exporter
+        Positional arguments:
+        target        - the target mcu/board for this project
+        export_dir    - the directory of the exported project files
+        project_name  - the name of the project
+        toolchain     - an instance of class toolchain
+
+        Keyword arguments:
+        extra_symbols - a list of extra macros for the toolchain
+        resources     - an instance of class Resources
+        """
+        self.export_dir = export_dir
         self.target = target
-        self.program_name = program_name
-        self.toolchain = TOOLCHAIN_CLASSES[self.get_toolchain()](TARGET_MAP[target])
-        self.build_url_resolver = build_url_resolver
+        self.project_name = project_name
+        self.toolchain = toolchain
         jinja_loader = FileSystemLoader(os.path.dirname(os.path.abspath(__file__)))
         self.jinja_environment = Environment(loader=jinja_loader)
-        self.extra_symbols = extra_symbols if extra_symbols else []
-        self.config_macros = []
-        self.sources_relative = sources_relative
-        self.config_header = None
+        self.resources = resources
+        self.generated_files = [join(self.TEMPLATE_DIR,"GettingStarted.html")]
+        self.builder_files_dict = {}
+        self.add_config()
 
     def get_toolchain(self):
+        """A helper getter function that we should probably eliminate"""
         return self.TOOLCHAIN
+
+    def add_config(self):
+        """Add the containgin directory of mbed_config.h to include dirs"""
+        config = self.toolchain.get_config_header()
+        if config:
+            self.resources.inc_dirs.append(
+                dirname(relpath(config,
+                                self.resources.file_basepath[config])))
 
     @property
     def flags(self):
-        return self.toolchain.flags
+        """Returns a dictionary of toolchain flags.
+        Keys of the dictionary are:
+        cxx_flags    - c++ flags
+        c_flags      - c flags
+        ld_flags     - linker flags
+        asm_flags    - assembler flags
+        common_flags - common options
+        """
+        config_header = self.toolchain.get_config_header()
+        flags = {key + "_flags": copy.deepcopy(value) for key, value
+                 in self.toolchain.flags.iteritems()}
+        asm_defines = ["-D" + symbol for symbol in self.toolchain.get_symbols(True)]
+        c_defines = ["-D" + symbol for symbol in self.toolchain.get_symbols()]
+        flags['asm_flags'] += asm_defines
+        flags['c_flags'] += c_defines
+        flags['cxx_flags'] += c_defines
+        if config_header:
+            config_header = relpath(config_header,
+                                    self.resources.file_basepath[config_header])
+            flags['c_flags'] += self.toolchain.get_config_option(config_header)
+            flags['cxx_flags'] += self.toolchain.get_config_option(
+                config_header)
+        return flags
 
-    @property
-    def progen_flags(self):
-        if not hasattr(self, "_progen_flag_cache") :
-            self._progen_flag_cache = dict([(key + "_flags", value) for key,value in self.flags.iteritems()])
-            asm_defines = ["-D"+symbol for symbol in self.toolchain.get_symbols(True)]
-            c_defines = ["-D" + symbol for symbol in self.toolchain.get_symbols()]
-            self._progen_flag_cache['asm_flags'] += asm_defines
-            self._progen_flag_cache['c_flags'] += c_defines
-            self._progen_flag_cache['cxx_flags'] += c_defines
-            if self.config_header:
-                self._progen_flag_cache['c_flags'] += self.toolchain.get_config_option(self.config_header)
-                self._progen_flag_cache['cxx_flags'] += self.toolchain.get_config_option(self.config_header)
-        return self._progen_flag_cache
+    def get_source_paths(self):
+        """Returns a list of the directories where source files are contained"""
+        source_keys = ['s_sources', 'c_sources', 'cpp_sources', 'hex_files',
+                       'objects', 'libraries']
+        source_files = []
+        for key in source_keys:
+            source_files.extend(getattr(self.resources, key))
+        return list(set([os.path.dirname(src) for src in source_files]))
 
-    def __scan_and_copy(self, src_path, trg_path):
-        resources = self.toolchain.scan_resources(src_path)
+    def gen_file(self, template_file, data, target_file, **kwargs):
+        """Generates a project file from a template using jinja"""
+        jinja_loader = FileSystemLoader(
+            os.path.dirname(os.path.abspath(__file__)))
+        jinja_environment = Environment(loader=jinja_loader,
+                                        undefined=StrictUndefined, **kwargs)
 
-        for r_type in ['headers', 's_sources', 'c_sources', 'cpp_sources',
-            'objects', 'libraries', 'linker_script',
-            'lib_builds', 'lib_refs', 'hex_files', 'bin_files']:
-            r = getattr(resources, r_type)
-            if r:
-                self.toolchain.copy_files(r, trg_path, resources=resources)
-        return resources
-
-    @staticmethod
-    def _get_dir_grouped_files(files):
-        """ Get grouped files based on the dirname """
-        files_grouped = {}
-        for file in files:
-            rel_path = os.path.relpath(file, os.getcwd())
-            dir_path = os.path.dirname(rel_path)
-            if dir_path == '':
-                # all files within the current dir go into Source_Files
-                dir_path = 'Source_Files'
-            if not dir_path in files_grouped.keys():
-                files_grouped[dir_path] = []
-            files_grouped[dir_path].append(file)
-        return files_grouped
-
-    def progen_get_project_data(self):
-        """ Get ProGen project data  """
-        # provide default data, some tools don't require any additional
-        # tool specific settings
-        code_files = []
-        for r_type in ['c_sources', 'cpp_sources', 's_sources']:
-            for file in getattr(self.resources, r_type):
-                code_files.append(file)
-
-        sources_files = code_files + self.resources.hex_files + self.resources.objects + \
-            self.resources.libraries
-        sources_grouped = Exporter._get_dir_grouped_files(sources_files)
-        headers_grouped = Exporter._get_dir_grouped_files(self.resources.headers)
-
-        project_data = {
-            'common': {
-                'sources': sources_grouped,
-                'includes': headers_grouped,
-                'build_dir':'.build',
-                'target': [TARGET_MAP[self.target].progen['target']],
-                'macros': self.get_symbols(),
-                'export_dir': [self.inputDir],
-                'linker_file': [self.resources.linker_script],
-            }
-        }
-        return project_data
-
-    def progen_gen_file(self, tool_name, project_data, progen_build=False):
-        """ Generate project using ProGen Project API """
-        settings = ProjectSettings()
-        project = Project(self.program_name, [project_data], settings)
-        # TODO: Fix this, the inc_dirs are not valid (our scripts copy files), therefore progen
-        # thinks it is not dict but a file, and adds them to workspace.
-        project.project['common']['include_paths'] = self.resources.inc_dirs
-        project.generate(tool_name, copied=not self.sources_relative)
-        if progen_build:
-            print("Project exported, building...")
-            result = project.build(tool_name)
-            if result == -1:
-                raise FailedBuildException("Build Failed")
-
-    def __scan_all(self, path):
-        resources = []
-
-        for root, dirs, files in walk(path):
-            for d in copy(dirs):
-                if d == '.' or d == '..':
-                    dirs.remove(d)
-
-            for file in files:
-                file_path = join(root, file)
-                resources.append(file_path)
-
-        return resources
-
-    def scan_and_copy_resources(self, prj_paths, trg_path, relative=False):
-        # Copy only the file for the required target and toolchain
-        lib_builds = []
-        # Create the configuration object
-        if isinstance(prj_paths, basestring):
-            prj_paths = [prj_paths]
-        config = Config(self.target, prj_paths)
-        for src in ['lib', 'src']:
-            resources = self.__scan_and_copy(join(prj_paths[0], src), trg_path)
-            for path in prj_paths[1:]:
-                resources.add(self.__scan_and_copy(join(path, src), trg_path))
-
-            lib_builds.extend(resources.lib_builds)
-
-            # The repository files
-            #for repo_dir in resources.repo_dirs:
-            #    repo_files = self.__scan_all(repo_dir)
-            #    for path in prj_paths:
-            #        self.toolchain.copy_files(repo_files, trg_path, rel_path=join(path, src))
-
-        # The libraries builds
-        for bld in lib_builds:
-            build_url = open(bld).read().strip()
-            lib_data = self.build_url_resolver(build_url)
-            lib_path = lib_data['path'].rstrip('\\/')
-            self.__scan_and_copy(lib_path, join(trg_path, lib_data['name']))
-
-            # Create .hg dir in mbed build dir so it's ignored when versioning
-            hgdir = join(trg_path, lib_data['name'], '.hg')
-            mkdir(hgdir)
-            fhandle = file(join(hgdir, 'keep.me'), 'a')
-            fhandle.close()
-
-        if not relative:
-            # Final scan of the actual exported resources
-            resources = self.toolchain.scan_resources(trg_path)
-            resources.relative_to(trg_path, self.DOT_IN_RELATIVE_PATH)
-        else:
-            # use the prj_dir (source, not destination)
-            resources = self.toolchain.scan_resources(prj_paths[0])
-            for path in prj_paths[1:]:
-                resources.add(toolchain.scan_resources(path))
-
-        # Loads the resources into the config system which might expand/modify resources based on config data
-        self.resources = config.load_resources(resources)
-
-        if hasattr(self, "MBED_CONFIG_HEADER_SUPPORTED") and self.MBED_CONFIG_HEADER_SUPPORTED :
-            # Add the configuration file to the target directory
-            self.config_header = self.toolchain.MBED_CONFIG_FILE_NAME
-            config.get_config_data_header(join(trg_path, self.config_header))
-            self.config_macros = []
-            self.resources.inc_dirs.append(".")
-        else:
-            # And add the configuration macros to the toolchain
-            self.config_macros = config.get_config_data_macros()
-
-    def gen_file(self, template_file, data, target_file):
-        template_path = join(Exporter.TEMPLATE_DIR, template_file)
-        template = self.jinja_environment.get_template(template_file)
+        template = jinja_environment.get_template(template_file)
         target_text = template.render(data)
 
-        target_path = join(self.inputDir, target_file)
-        logging.debug("Generating: %s" % target_path)
+        target_path = join(self.export_dir, target_file)
+        logging.debug("Generating: %s", target_path)
         open(target_path, "w").write(target_text)
+        self.generated_files += [target_path]
 
-    def get_symbols(self, add_extra_symbols=True):
-        """ This function returns symbols which must be exported.
-            Please add / overwrite symbols in each exporter separately
+    def make_key(self, src):
+        """From a source file, extract group name
+        Positional Arguments:
+        src - the src's location
         """
+        rel_path = relpath(src, self.resources.file_basepath[src])
+        path_list = os.path.normpath(rel_path).split(os.sep)
+        assert len(path_list) >= 1
+        if len(path_list) == 1:
+            key = self.project_name
+        else:
+            key = path_list[0]
+        return key
 
-        # We have extra symbols from e.g. libraries, we want to have them also added to export
-        extra = self.extra_symbols if add_extra_symbols else []
-        if hasattr(self, "MBED_CONFIG_HEADER_SUPPORTED") and self.MBED_CONFIG_HEADER_SUPPORTED:
-            # If the config header is supported, we will preinclude it and do not not
-            # need the macros as preprocessor flags
-            return extra
+    def group_project_files(self, sources):
+        """Group the source files by their encompassing directory
+        Positional Arguments:
+        sources - array of source locations
 
-        symbols = self.toolchain.get_symbols(True) + self.toolchain.get_symbols() \
-                  + self.config_macros + extra
-        return symbols
+        Returns a dictionary of {group name: list of source locations}
+        """
+        data = sorted(sources, key=self.make_key)
+        return {k: list(g) for k,g in groupby(data, self.make_key)}
 
-def zip_working_directory_and_clean_up(tempdirectory=None, destination=None, program_name=None, clean=True):
-    uid = str(uuid.uuid4())
-    zipfilename = '%s.zip'%uid
+    @staticmethod
+    def build(project_name, log_name='build_log.txt', cleanup=True):
+        """Invoke exporters build command within a subprocess.
+        This method is assumed to be executed at the same level as exporter
+        project files and project source code.
+        See uvision/__init__.py, iar/__init__.py, and makefile/__init__.py for
+        example implemenation.
 
-    logging.debug("Zipping up %s to %s" % (tempdirectory,  join(destination, zipfilename)))
-    # make zip
-    def zipdir(basedir, archivename):
-        assert isdir(basedir)
-        fakeroot = program_name + '/'
-        with closing(ZipFile(archivename, "w", ZIP_DEFLATED)) as z:
-            for root, _, files in os.walk(basedir):
-                # NOTE: ignore empty directories
-                for fn in files:
-                    absfn = join(root, fn)
-                    zfn = fakeroot + '/' +  absfn[len(basedir)+len(os.sep):]
-                    z.write(absfn, zfn)
+        Positional Arguments:
+        project_name - the name of the project to build; often required by
+        exporter's build command.
 
-    zipdir(tempdirectory, join(destination, zipfilename))
+        Keyword Args:
+        log_name - name of the build log to create. Written and printed out,
+        deleted if cleanup = True
+        cleanup - a boolean dictating whether exported project files and
+        build log are removed after build
 
-    if clean:
-        shutil.rmtree(tempdirectory)
+        Returns -1 on failure and 0 on success
+        """
+        raise NotImplemented("Implement in derived Exporter class.")
 
-    return join(destination, zipfilename)
+    @abstractmethod
+    def generate(self):
+        """Generate an IDE/tool specific project file"""
+        raise NotImplemented("Implement a generate function in Exporter child class")
+
+
+def filter_supported(compiler, whitelist):
+    """Generate a list of supported targets for a given compiler and post-binary hook
+    white-list."""
+    def supported_p(obj):
+        """Internal inner function used for filtering"""
+        if compiler not in obj.supported_toolchains:
+            return False
+        if not hasattr(obj, "post_binary_hook"):
+            return True
+        if obj.post_binary_hook['function'] in whitelist:
+            return True
+        else:
+            return False
+    return list(target for target, obj in TARGET_MAP.iteritems()
+                if supported_p(obj))

@@ -51,10 +51,10 @@ Wiring:
 
   * digital_loop (Digital(In|Out|InOut), InterruptIn):
       * Arduino headers: (D0 <-> D7)
+      * NUCLEO_*: (D2 <-> D9)
       * LPC1549: (D2 <-> D7)
       * LPC1*: (p5   <-> p25 )
       * KL25Z: (PTA5<-> PTC6)
-      * NUCLEO_F103RB: (PC_6 <-> PB_8)
       * MAXWSNENV: (TP3 <-> TP4)
       * MAX32600MBED: (P1_0 <-> P4_7)
       * VK_RZ_A1H: (P3_2 <-> P5_6)
@@ -70,6 +70,8 @@ Wiring:
 
   * analog_loop (AnalogIn, AnalogOut):
       * Arduino headers: (A0 <-> A5)
+      * NUCLEO64: (A0 <-> A2)
+      * NUCLEO144: (A0 <-> D13)
       * LPC1549: (A0 <-> D12)
       * LPC1*: (p17   <-> p18 )
       * KL25Z: (PTE30 <-> PTC2)
@@ -87,6 +89,8 @@ Wiring:
 
   * i2c_loop:
       * LPC1768: (p28 <-> p9), (p27 <-> p10)
+      * NUCLEO64: (D14 <-> D3), (D15 <-> D6)
+      * NUCLEO144: (D14 <-> PB_11), (D15 <-> PB_10)
 
   * i2c_eeprom:
       * LPC1*: (SDA=p28 , SCL=p27)
@@ -113,8 +117,10 @@ Wiring:
      * NUCLEO_F746ZG: (RX=PA_11, TX=PA_12)
      * DISCO_F746NG:  (RX=PB_8, TX=PB_9)
      * DISCO_L476VG:  (RX=PA_11, TX=PA_12)
-     * NUCLEO_L476RG:  (RX=PA_11, TX=PA_12)
-     * NUCLEO_L432KC:  (RX=PA_11, TX=PA_12)
+     * NUCLEO_L476RG: (RX=PA_11, TX=PA_12)
+     * NUCLEO_L432KC: (RX=PA_11, TX=PA_12)
+     * DISCO_F303VC:  (RX=PA_11, TX=PA_12)
+     * NUCLEO_F412ZG: (RX=PA_11, TX=PA_12)
 
 """
 TESTS = [
@@ -170,7 +176,6 @@ TESTS = [
         "id": "MBED_A7", "description": "InterruptIn",
         "source_dir": join(TEST_DIR, "mbed", "interruptin"),
         "dependencies": [MBED_LIBRARIES, TEST_MBED_LIB],
-        "duration": 15,
         "automated": True,
         "peripherals": ["digital_loop"]
     },
@@ -180,11 +185,12 @@ TESTS = [
         "dependencies": [MBED_LIBRARIES, TEST_MBED_LIB],
         "automated": True,
         "peripherals": ["analog_loop"],
-        "mcu": ["LPC1768", "LPC2368", "LPC2460", "KL25Z", "K64F", "K22F", "LPC4088", "LPC1549",
+        "mcu": ["LPC1768", "LPC2368", "LPC2460", "KL25Z", "K64F", "K66F", "K22F", "LPC4088", "LPC1549",
                 "NUCLEO_F072RB", "NUCLEO_F091RC", "NUCLEO_F302R8", "NUCLEO_F303K8", "NUCLEO_F303RE", "NUCLEO_F207ZG",
-                "NUCLEO_F334R8", "NUCLEO_L053R8", "NUCLEO_L073RZ", "NUCLEO_L152RE",
-                "NUCLEO_F410RB", "NUCLEO_F411RE", "NUCLEO_F446RE", "NUCLEO_F446ZE",
-                "DISCO_F407VG", "DISCO_F746NG", "NUCLEO_F746ZG",
+                "NUCLEO_F334R8", "NUCLEO_F303ZE", "NUCLEO_L053R8", "NUCLEO_L073RZ", "NUCLEO_L152RE",
+                "NUCLEO_F410RB", "NUCLEO_F446RE", "NUCLEO_F446ZE", "NUCLEO_F429ZI",
+                "DISCO_F407VG", "NUCLEO_F746ZG", "NUCLEO_L476RG",
+                "DISCO_L053C8", "DISCO_F334C8", "DISCO_L476VG", "DISCO_F469NI", "DISCO_F429ZI", "DISCO_F769NI",
                 "ARCH_MAX", "MAX32600MBED", "MOTE_L152RC", "B96B_F446VE"]
     },
     {
@@ -209,14 +215,6 @@ TESTS = [
         "peripherals": ["port_loop"],
         "supported": DEFAULT_SUPPORT,
         "automated": True,
-    },
-    {
-        "id": "MBED_A12", "description": "SD File System",
-        "source_dir": join(TEST_DIR, "mbed", "sd"),
-        "dependencies": [MBED_LIBRARIES, TEST_MBED_LIB, FS_LIBRARY],
-        "automated": True,
-        "duration": 15,
-        "peripherals": ["SD"]
     },
     {
         "id": "MBED_A13", "description": "I2C MMA7660 accelerometer",
@@ -258,13 +256,12 @@ TESTS = [
         "dependencies": [MBED_LIBRARIES, TEST_MBED_LIB],
         "peripherals": ["24LC256"],
         "automated": True,
-        "duration": 15,
     },
     {
         "id": "MBED_A20", "description": "I2C master/slave test",
         "source_dir": join(TEST_DIR, "mbed", "i2c_master_slave"),
         "dependencies": [MBED_LIBRARIES, TEST_MBED_LIB,],
-        "mcu": ["LPC1768", "RZ_A1H"],
+        "automated": True,
         "peripherals": ["i2c_loop"]
     },
     {
@@ -278,7 +275,6 @@ TESTS = [
         "source_dir": join(TEST_DIR, "mbed", "spifi1"),
         "dependencies": [MBED_LIBRARIES, TEST_MBED_LIB],
         "automated": True,
-        "duration": 30,
         "mcu": ["LPC4088","LPC4088_DM"]
     },
     {
@@ -286,7 +282,6 @@ TESTS = [
         "source_dir": join(TEST_DIR, "mbed", "spifi2"),
         "dependencies": [MBED_LIBRARIES, TEST_MBED_LIB],
         "automated": True,
-        "duration": 30,
         "mcu": ["LPC4088","LPC4088_DM"]
     },
     {
@@ -304,7 +299,6 @@ TESTS = [
         "dependencies": [MBED_LIBRARIES, TEST_MBED_LIB],
         "peripherals": ["24LC256"],
         "automated": True,
-        "duration": 10,
     },
     {
         "id": "MBED_A26", "description": "AnalogIn potentiometer test",
@@ -312,20 +306,38 @@ TESTS = [
         "dependencies": [MBED_LIBRARIES, TEST_MBED_LIB],
         "peripherals": ["analog_pot"],
         "automated": True,
-        "duration": 10,
     },
     {
         "id": "MBED_A27", "description": "CAN loopback test",
         "source_dir": join(TEST_DIR, "mbed", "can_loopback"),
         "dependencies": [MBED_LIBRARIES, TEST_MBED_LIB],
         "automated": True,
-        "duration": 20,
         "peripherals": ["can_transceiver"],
         "mcu": ["LPC1549", "LPC1768","B96B_F446VE", "VK_RZ_A1H",
                 "NUCLEO_F091RC", "NUCLEO_F072RB", "NUCLEO_F042K6", "NUCLEO_F334R8", "NUCLEO_F207ZG",
         "NUCLEO_F303RE", "NUCLEO_F303K8", "NUCLEO_F302R8", "NUCLEO_F446RE","NUCLEO_F446ZE",
         "DISCO_F469NI", "DISCO_F429ZI", "NUCLEO_F103RB", "NUCLEO_F746ZG",
-        "DISCO_F746NG", "DISCO_L476VG", "NUCLEO_L476RG", "NUCLEO_L432KC"]
+        "DISCO_F746NG", "DISCO_L476VG", "NUCLEO_L476RG", "NUCLEO_L432KC",
+        "DISCO_F769NI", "NUCLEO_F767ZI", "DISCO_F303VC", "NUCLEO_F412ZG"]
+    },
+    {
+        "id": "MBED_A28", "description": "CAN loopback test",
+        "source_dir": join(TEST_DIR, "mbed", "can_loopback"),
+        "dependencies": [MBED_LIBRARIES, TEST_MBED_LIB],
+        "automated": True,
+        "mcu": ["B96B_F446VE",
+                "NUCLEO_F091RC", "NUCLEO_F072RB", "NUCLEO_F042K6", "NUCLEO_F334R8", "NUCLEO_F207ZG",
+        "NUCLEO_F303RE", "NUCLEO_F303K8", "NUCLEO_F302R8", "NUCLEO_F303ZE", "NUCLEO_F446RE","NUCLEO_F446ZE",
+        "DISCO_F469NI", "DISCO_F429ZI", "NUCLEO_F103RB", "NUCLEO_F746ZG",
+        "DISCO_F746NG", "DISCO_L476VG", "NUCLEO_L476RG", "NUCLEO_L432KC",
+        "DISCO_F769NI", "NUCLEO_F767ZI", "DISCO_F303VC", "NUCLEO_F412ZG"]
+    },
+    {
+        "id": "MBED_A29", "description": "i2c_master_slave_asynch",
+        "source_dir": join(TEST_DIR, "mbed", "i2c_master_slave_asynch"),
+        "dependencies": [MBED_LIBRARIES, TEST_MBED_LIB],
+        "automated": True,
+        "peripherals": ["i2c_loop"]
     },
     {
         "id": "MBED_BLINKY", "description": "Blinky",
@@ -338,15 +350,14 @@ TESTS = [
         "source_dir": join(TEST_DIR, "mbed", "bus"),
         "dependencies": [MBED_LIBRARIES, TEST_MBED_LIB],
         "automated": False,
-        "duration": 15,
     },
 
     {
         "id": "MBED_BUSOUT", "description": "BusOut",
         "source_dir": join(TEST_DIR, "mbed", "bus_out"),
         "dependencies": [MBED_LIBRARIES, TEST_MBED_LIB],
+        "exclude_mcu": ["NUCLEO_L011K4"],
         "automated": True,
-        "duration": 15,
     },
 
     # Size benchmarks
@@ -376,32 +387,6 @@ TESTS = [
         "dependencies": [MBED_LIBRARIES]
     },
 
-    # performance related tests
-    {
-        "id": "PERF_1", "description": "SD Stdio R/W Speed",
-        "source_dir": join(TEST_DIR, "mbed", "sd_perf_stdio"),
-        "dependencies": [MBED_LIBRARIES, TEST_MBED_LIB, FS_LIBRARY],
-        "automated": True,
-        "duration": 15,
-        "peripherals": ["SD"]
-    },
-    {
-        "id": "PERF_2", "description": "SD FileHandle R/W Speed",
-        "source_dir": join(TEST_DIR, "mbed", "sd_perf_fhandle"),
-        "dependencies": [MBED_LIBRARIES, TEST_MBED_LIB, FS_LIBRARY],
-        "automated": True,
-        "duration": 15,
-        "peripherals": ["SD"]
-    },
-    {
-        "id": "PERF_3", "description": "SD FatFS R/W Speed",
-        "source_dir": join(TEST_DIR, "mbed", "sd_perf_fatfs"),
-        "dependencies": [MBED_LIBRARIES, TEST_MBED_LIB, FS_LIBRARY],
-        "automated": True,
-        "duration": 15,
-        "peripherals": ["SD"]
-    },
-
 
     # Not automated MBED tests
     {
@@ -414,7 +399,6 @@ TESTS = [
         "id": "MBED_2", "description": "stdio",
         "source_dir": join(TEST_DIR, "mbed", "stdio"),
         "dependencies": [MBED_LIBRARIES, TEST_MBED_LIB],
-        "duration": 20,
         "automated": True,
         #"host_test": "stdio_auto"
     },
@@ -427,7 +411,6 @@ TESTS = [
         "id": "MBED_4", "description": "Sleep",
         "source_dir": join(TEST_DIR, "mbed", "sleep"),
         "dependencies": [MBED_LIBRARIES, TEST_MBED_LIB],
-        "duration": 30,
         "mcu": ["LPC1768", "LPC11U24", "LPC4088","LPC4088_DM","NRF51822", "LPC11U68"]
     },
     {
@@ -439,13 +422,11 @@ TESTS = [
         "id": "MBED_6", "description": "SW Reset",
         "source_dir": join(TEST_DIR, "mbed", "reset"),
         "dependencies": [MBED_LIBRARIES],
-        "duration": 15
     },
     {
         "id": "MBED_7", "description": "stdio  benchmark",
         "source_dir": join(TEST_DIR, "mbed", "stdio_benchmark"),
         "dependencies": [MBED_LIBRARIES],
-        "duration": 40
     },
     {
         "id": "MBED_8", "description": "SPI",
@@ -470,7 +451,6 @@ TESTS = [
         "dependencies": [MBED_LIBRARIES, TEST_MBED_LIB],
         "automated": True,
         #"host_test": "wait_us_auto",
-        "duration": 20,
     },
     {
         "id": "MBED_12", "description": "C++",
@@ -505,6 +485,7 @@ TESTS = [
                         "NRF51_MICROBIT", "NRF51_MICROBIT_B", "NRF51_MICROBIT_BOOT",
                         "NRF51_MICROBIT_B_BOOT", "NRF51_MICROBIT_B_OTA", "NRF51_MICROBIT_OTA",
                         "HRM1017", "HRM1017_BOOT", "HRM1701_OTA",
+                        "NUCLEO_L011K4",
                         "TY51822R3", "TY51822R3_BOOT", "TY51822R3_OTA",
                         "NRF15_DONGLE", "NRF15_DONGLE_BOOT", "NRF15_DONGLE_OTA",
                         "ARCH_BLE", "ARCH_BLE_BOOT", "ARCH_BLE_OTA",
@@ -516,7 +497,6 @@ TESTS = [
                         "DELTA_DFCM_NNN40", "DELTA_DFCM_NNN40_BOOT", "DELTA_DFCM_NNN40_OTA",
                         "LPC1114"],
         #"host_test": "rtc_auto",
-        "duration": 15
     },
     {
         "id": "MBED_17", "description": "Serial Interrupt 2",
@@ -527,12 +507,6 @@ TESTS = [
         "id": "MBED_18", "description": "Local FS Directory",
         "source_dir": join(TEST_DIR, "mbed", "dir"),
         "dependencies": [MBED_LIBRARIES],
-    },
-    {
-        "id": "MBED_19", "description": "SD FS Directory",
-        "source_dir": join(TEST_DIR, "mbed", "dir_sd"),
-        "dependencies": [MBED_LIBRARIES, FS_LIBRARY],
-        "peripherals": ["SD"]
     },
     {
         "id": "MBED_20", "description": "InterruptIn 2",
@@ -555,7 +529,6 @@ TESTS = [
         "id": "MBED_23", "description": "Ticker Int us",
         "source_dir": join(TEST_DIR, "mbed", "ticker_2"),
         "dependencies": [MBED_LIBRARIES, TEST_MBED_LIB],
-        "duration": 15,
         "automated": True,
         #"host_test": "wait_us_auto"
     },
@@ -563,7 +536,6 @@ TESTS = [
         "id": "MBED_24", "description": "Timeout Int us",
         "source_dir": join(TEST_DIR, "mbed", "timeout"),
         "dependencies": [MBED_LIBRARIES, TEST_MBED_LIB],
-        "duration": 15,
         "automated": True,
         #"host_test": "wait_us_auto"
     },
@@ -571,7 +543,6 @@ TESTS = [
         "id": "MBED_25", "description": "Time us",
         "source_dir": join(TEST_DIR, "mbed", "time_us"),
         "dependencies": [MBED_LIBRARIES, TEST_MBED_LIB],
-        "duration": 15,
         "automated": True,
         #"host_test": "wait_us_auto"
     },
@@ -600,7 +571,7 @@ TESTS = [
                 "NUCLEO_F072RB", "NUCLEO_F042K6", "NUCLEO_F334R8", "NUCLEO_F303RE",
                 "NUCLEO_F303K8", "NUCLEO_F302R8", "NUCLEO_F446RE","NUCLEO_F446ZE", "DISCO_F469NI", "NUCLEO_F207ZG",
                 "DISCO_F429ZI", "NUCLEO_F103RB", "NUCLEO_F746ZG", "DISCO_F746NG",
-                "NUCLEO_L476RG", "NUCLEO_L432KC"]
+                "NUCLEO_L476RG", "NUCLEO_L432KC", "DISCO_F303VC", "NUCLEO_F412ZG"]
     },
     {
         "id": "MBED_30", "description": "CAN network test using interrupts",
@@ -610,7 +581,7 @@ TESTS = [
                 "NUCLEO_F072RB", "NUCLEO_F042K6", "NUCLEO_F334R8", "NUCLEO_F303RE",
                 "NUCLEO_F303K8", "NUCLEO_F302R8", "NUCLEO_F446RE", "NUCLEO_F446ZE", "DISCO_F469NI",
                 "DISCO_F429ZI", "NUCLEO_F103RB", "NUCLEO_F746ZG", "DISCO_F746NG",
-                "NUCLEO_L476RG", "NUCLEO_L432KC"]
+                "NUCLEO_L476RG", "NUCLEO_L432KC", "DISCO_F303VC", "NUCLEO_F412ZG"]
     },
     {
         "id": "MBED_31", "description": "PWM LED test",
@@ -626,14 +597,12 @@ TESTS = [
         "id": "MBED_33", "description": "C string operations",
         "source_dir": join(TEST_DIR, "mbed", "cstring"),
         "dependencies": [MBED_LIBRARIES, TEST_MBED_LIB],
-        "duration": 10,
         "automated": False,
     },
     {
         "id": "MBED_34", "description": "Ticker Two callbacks",
         "source_dir": join(TEST_DIR, "mbed", "ticker_3"),
         "dependencies": [MBED_LIBRARIES, TEST_MBED_LIB],
-        "duration": 15,
         "automated": True,
         #"host_test": "wait_us_auto"
     },
@@ -643,7 +612,6 @@ TESTS = [
         "dependencies": [MBED_LIBRARIES, TEST_MBED_LIB, join(PERIPHERALS, 'C12832')],
         "peripherals": ["C12832"],
         "automated": True,
-        "duration": 10,
     },
     {
         "id": "MBED_36", "description": "WFI correct behavior",
@@ -655,12 +623,14 @@ TESTS = [
         "id": "MBED_37", "description": "Serial NC RX",
         "source_dir": join(TEST_DIR, "mbed", "serial_nc_rx"),
         "dependencies": [MBED_LIBRARIES, TEST_MBED_LIB],
+        "exclude_mcu": ["NUCLEO_L011K4"],
         "automated": True
     },
     {
         "id": "MBED_38", "description": "Serial NC TX",
         "source_dir": join(TEST_DIR, "mbed", "serial_nc_tx"),
         "dependencies": [MBED_LIBRARIES, TEST_MBED_LIB],
+        "exclude_mcu": ["NUCLEO_L011K4"],
         "automated": True
     },
     {
@@ -680,13 +650,11 @@ TESTS = [
         "id": "CMSIS_RTOS_2", "description": "Mutex",
         "source_dir": join(TEST_DIR, "rtos", "cmsis", "mutex"),
         "dependencies": [MBED_LIBRARIES, RTOS_LIBRARIES],
-        "duration": 20
     },
     {
         "id": "CMSIS_RTOS_3", "description": "Semaphore",
         "source_dir": join(TEST_DIR, "rtos", "cmsis", "semaphore"),
         "dependencies": [MBED_LIBRARIES, RTOS_LIBRARIES],
-        "duration": 20
     },
     {
         "id": "CMSIS_RTOS_4", "description": "Signals",
@@ -697,13 +665,11 @@ TESTS = [
         "id": "CMSIS_RTOS_5", "description": "Queue",
         "source_dir": join(TEST_DIR, "rtos", "cmsis", "queue"),
         "dependencies": [MBED_LIBRARIES, RTOS_LIBRARIES],
-        "duration": 20
     },
     {
         "id": "CMSIS_RTOS_6", "description": "Mail",
         "source_dir": join(TEST_DIR, "rtos", "cmsis", "mail"),
         "dependencies": [MBED_LIBRARIES, RTOS_LIBRARIES],
-        "duration": 20
     },
     {
         "id": "CMSIS_RTOS_7", "description": "Timer",
@@ -721,50 +687,50 @@ TESTS = [
         "id": "RTOS_1", "description": "Basic thread",
         "source_dir": join(TEST_DIR, "rtos", "mbed", "basic"),
         "dependencies": [MBED_LIBRARIES, RTOS_LIBRARIES, TEST_MBED_LIB],
-        "duration": 15,
         "automated": True,
         #"host_test": "wait_us_auto",
         "mcu": ["LPC1768", "LPC1549", "LPC11U24", "LPC812", "LPC2460", "LPC824", "SSCI824",
-                "KL25Z", "KL05Z", "K64F", "KL46Z", "HEXIWEAR",
-                "RZ_A1H", "VK_RZ_A1H", "DISCO_F407VG", "DISCO_F429ZI", "NUCLEO_F411RE", "DISCO_F469NI", "NUCLEO_F410RB", "NUCLEO_F429ZI",
-                "NUCLEO_F401RE", "NUCLEO_F334R8", "DISCO_F334C8", "NUCLEO_F302R8", "NUCLEO_F030R8", "NUCLEO_F070RB", "NUCLEO_F207ZG",
-                "NUCLEO_L031K6", "NUCLEO_L053R8", "DISCO_L053C8", "NUCLEO_L073RZ", "NUCLEO_F072RB", "NUCLEO_F091RC", "NUCLEO_L432KC", "DISCO_L476VG", "NUCLEO_L476RG",
-                "DISCO_F401VC", "NUCLEO_F303RE", "NUCLEO_F303K8", "MAXWSNENV", "MAX32600MBED", "NUCLEO_L152RE", "NUCLEO_F446RE", "NUCLEO_F446ZE", "NUCLEO_F103RB", "DISCO_F746NG", "NUCLEO_F746ZG", "MOTE_L152RC", "B96B_F446VE",
+                "KL25Z", "KL05Z", "K22F", "K64F", "K66F", "KL43Z", "KL46Z", "HEXIWEAR",
+                "RZ_A1H", "VK_RZ_A1H", "DISCO_F407VG", "DISCO_F429ZI", "NUCLEO_F411RE", "NUCLEO_F412ZG", "DISCO_F469NI", "NUCLEO_F410RB", "NUCLEO_F429ZI",
+                "NUCLEO_F401RE", "NUCLEO_F334R8", "DISCO_F334C8", "NUCLEO_F302R8", "NUCLEO_F070RB", "NUCLEO_F207ZG",
+                "NUCLEO_L073RZ", "NUCLEO_F072RB", "NUCLEO_F091RC", "NUCLEO_L432KC", "DISCO_L476VG", "NUCLEO_L476RG",
+                "DISCO_F401VC", "NUCLEO_F303RE", "NUCLEO_F303ZE", "NUCLEO_F303K8", "MAXWSNENV", "MAX32600MBED", "NUCLEO_L152RE", "NUCLEO_F446RE", "NUCLEO_F446ZE", "NUCLEO_F103RB", "DISCO_F746NG", "NUCLEO_F746ZG", "MOTE_L152RC", "B96B_F446VE",
                 "EFM32HG_STK3400", "EFM32PG_STK3401", "EFM32LG_STK3600", "EFM32GG_STK3700", "EFM32WG_STK3800",
-                "NRF51822", "NRF51_DK", "SEEED_TINY_BLE", "ARM_BEETLE_SOC", "NUCLEO_F767ZI"],
+                "NUMAKER_PFM_NUC472", "NUMAKER_PFM_M453",
+                "NRF51822", "NRF51_DK", "SEEED_TINY_BLE", "ARM_BEETLE_SOC", "NUCLEO_F767ZI", "DISCO_F769NI"],
     },
     {
         "id": "RTOS_2", "description": "Mutex resource lock",
         "source_dir": join(TEST_DIR, "rtos", "mbed", "mutex"),
         "dependencies": [MBED_LIBRARIES, RTOS_LIBRARIES, TEST_MBED_LIB],
-        "duration": 20,
         "automated": True,
         "mcu": ["LPC1768", "LPC1549", "LPC11U24", "LPC812", "LPC2460", "LPC824", "SSCI824",
-                "KL25Z", "KL05Z", "K64F", "KL46Z", "HEXIWEAR",
-                "RZ_A1H", "VK_RZ_A1H", "DISCO_F407VG", "DISCO_F429ZI", "NUCLEO_F411RE", "DISCO_F469NI", "NUCLEO_F410RB", "NUCLEO_F429ZI",
-                "NUCLEO_F401RE", "NUCLEO_F334R8", "DISCO_F334C8", "NUCLEO_F302R8", "NUCLEO_F030R8", "NUCLEO_F070RB", "NUCLEO_F207ZG",
-                "NUCLEO_L031K6", "NUCLEO_L053R8", "DISCO_L053C8", "NUCLEO_L073RZ", "NUCLEO_F072RB", "NUCLEO_F091RC", "NUCLEO_L432KC", "DISCO_L476VG", "NUCLEO_L476RG",
+                "KL25Z", "KL05Z", "K22F", "K64F", "K66F", "KL43Z", "KL46Z", "HEXIWEAR",
+                "RZ_A1H", "VK_RZ_A1H", "DISCO_F407VG", "DISCO_F429ZI", "NUCLEO_F411RE", "NUCLEO_F412ZG", "DISCO_F469NI", "NUCLEO_F410RB", "NUCLEO_F429ZI",
+                "NUCLEO_F401RE", "NUCLEO_F334R8", "DISCO_F334C8", "NUCLEO_F302R8", "NUCLEO_F303ZE", "NUCLEO_F070RB", "NUCLEO_F207ZG",
+                "NUCLEO_L073RZ", "NUCLEO_F072RB", "NUCLEO_F091RC", "NUCLEO_L432KC", "DISCO_L476VG", "NUCLEO_L476RG",
                 "DISCO_F401VC", "NUCLEO_F303RE", "NUCLEO_F303K8", "MAXWSNENV", "MAX32600MBED", "NUCLEO_L152RE", "NUCLEO_F446RE", "NUCLEO_F103RB", "DISCO_F746NG",
                 "NUCLEO_F446ZE", "NUCLEO_F746ZG", "MOTE_L152RC", "B96B_F446VE",
                 "EFM32HG_STK3400", "EFM32PG_STK3401", "EFM32LG_STK3600", "EFM32GG_STK3700", "EFM32WG_STK3800",
-                "NRF51822", "NRF51_DK", "SEEED_TINY_BLE", "ARM_BEETLE_SOC", "NUCLEO_F767ZI"],
+                "NUMAKER_PFM_NUC472", "NUMAKER_PFM_M453",
+                "NRF51822", "NRF51_DK", "SEEED_TINY_BLE", "ARM_BEETLE_SOC", "NUCLEO_F767ZI", "DISCO_F769NI"],
     },
     {
         "id": "RTOS_3", "description": "Semaphore resource lock",
         "source_dir": join(TEST_DIR, "rtos", "mbed", "semaphore"),
         "dependencies": [MBED_LIBRARIES, RTOS_LIBRARIES, TEST_MBED_LIB],
-        "duration": 20,
         "automated": True,
         "mcu": ["LPC1768", "LPC1549", "LPC11U24", "LPC812", "LPC2460", "LPC824", "SSCI824",
-                "KL25Z", "KL05Z", "K64F", "KL46Z", "HEXIWEAR",
-                "RZ_A1H", "VK_RZ_A1H", "DISCO_F407VG", "DISCO_F429ZI", "NUCLEO_F411RE", "DISCO_F469NI", "NUCLEO_F410RB", "NUCLEO_F429ZI",
-                "NUCLEO_F401RE", "NUCLEO_F334R8", "DISCO_F334C8", "NUCLEO_F302R8", "NUCLEO_F030R8", "NUCLEO_F070RB", "NUCLEO_F207ZG",
-                "NUCLEO_L031K6", "NUCLEO_L053R8", "DISCO_L053C8", "NUCLEO_L073RZ", "NUCLEO_F072RB", "NUCLEO_F091RC", "NUCLEO_L432KC", "DISCO_L476VG", "NUCLEO_L476RG",
+                "KL25Z", "KL05Z", "K22F", "K64F", "K66F", "KL43Z", "KL46Z", "HEXIWEAR",
+                "RZ_A1H", "VK_RZ_A1H", "DISCO_F407VG", "DISCO_F429ZI", "NUCLEO_F411RE", "NUCLEO_F412ZG", "DISCO_F469NI", "NUCLEO_F410RB", "NUCLEO_F429ZI",
+                "NUCLEO_F401RE", "NUCLEO_F334R8", "DISCO_F334C8", "NUCLEO_F302R8", "NUCLEO_F303ZE", "NUCLEO_F070RB", "NUCLEO_F207ZG",
+                "NUCLEO_L073RZ", "NUCLEO_F072RB", "NUCLEO_F091RC", "NUCLEO_L432KC", "DISCO_L476VG", "NUCLEO_L476RG",
                 "DISCO_F401VC", "NUCLEO_F303RE", "NUCLEO_F303K8", "MAXWSNENV", "MAX32600MBED", "NUCLEO_L152RE", "NUCLEO_F446RE",  "NUCLEO_F446ZE",
                 "NUCLEO_F103RB", "DISCO_F746NG",
                 "NUCLEO_F746ZG",  "MOTE_L152RC", "B96B_F446VE",
                 "EFM32HG_STK3400", "EFM32PG_STK3401", "EFM32LG_STK3600", "EFM32GG_STK3700", "EFM32WG_STK3800",
-                "NRF51822", "NRF51_DK", "SEEED_TINY_BLE", "ARM_BEETLE_SOC", "NUCLEO_F767ZI"],
+                "NUMAKER_PFM_NUC472", "NUMAKER_PFM_M453",
+                "NRF51822", "NRF51_DK", "SEEED_TINY_BLE", "ARM_BEETLE_SOC", "NUCLEO_F767ZI", "DISCO_F769NI"],
     },
     {
         "id": "RTOS_4", "description": "Signals messaging",
@@ -772,15 +738,16 @@ TESTS = [
         "dependencies": [MBED_LIBRARIES, RTOS_LIBRARIES, TEST_MBED_LIB],
         "automated": True,
         "mcu": ["LPC1768", "LPC1549", "LPC11U24", "LPC812", "LPC2460", "LPC824", "SSCI824",
-                "KL25Z", "KL05Z", "K64F", "KL46Z", "HEXIWEAR",
-                "RZ_A1H", "VK_RZ_A1H", "DISCO_F407VG", "DISCO_F429ZI", "NUCLEO_F411RE", "DISCO_F469NI", "NUCLEO_F410RB", "NUCLEO_F429ZI",
-                "NUCLEO_F401RE", "NUCLEO_F334R8", "DISCO_F334C8", "NUCLEO_F302R8", "NUCLEO_F030R8", "NUCLEO_F070RB", "NUCLEO_F207ZG",
-                "NUCLEO_L031K6", "NUCLEO_L053R8", "DISCO_L053C8", "NUCLEO_L073RZ", "NUCLEO_F072RB", "NUCLEO_F091RC", "NUCLEO_L432KC", "DISCO_L476VG", "NUCLEO_L476RG",
+                "KL25Z", "KL05Z", "K22F", "K64F", "K66F", "KL43Z", "KL46Z", "HEXIWEAR",
+                "RZ_A1H", "VK_RZ_A1H", "DISCO_F407VG", "DISCO_F429ZI", "NUCLEO_F411RE", "NUCLEO_F412ZG", "DISCO_F469NI", "NUCLEO_F410RB", "NUCLEO_F429ZI",
+                "NUCLEO_F401RE", "NUCLEO_F334R8", "DISCO_F334C8", "NUCLEO_F302R8", "NUCLEO_F303ZE", "NUCLEO_F070RB", "NUCLEO_F207ZG",
+                "NUCLEO_L073RZ", "NUCLEO_F072RB", "NUCLEO_F091RC", "NUCLEO_L432KC", "DISCO_L476VG", "NUCLEO_L476RG",
                 "DISCO_F401VC", "NUCLEO_F303RE", "NUCLEO_F303K8", "MAXWSNENV", "MAX32600MBED", "NUCLEO_L152RE", "NUCLEO_F446RE", "NUCLEO_F446ZE",
                 "NUCLEO_F103RB", "DISCO_F746NG",
                 "NUCLEO_F746ZG",  "MOTE_L152RC", "B96B_F446VE",
                 "EFM32HG_STK3400", "EFM32PG_STK3401", "EFM32LG_STK3600", "EFM32GG_STK3700", "EFM32WG_STK3800",
-                "NRF51822", "NRF51_DK", "SEEED_TINY_BLE", "ARM_BEETLE_SOC", "NUCLEO_F767ZI"],
+                "NUMAKER_PFM_NUC472", "NUMAKER_PFM_M453",
+                "NRF51822", "NRF51_DK", "SEEED_TINY_BLE", "ARM_BEETLE_SOC", "NUCLEO_F767ZI", "DISCO_F769NI"],
     },
     {
         "id": "RTOS_5", "description": "Queue messaging",
@@ -788,14 +755,15 @@ TESTS = [
         "dependencies": [MBED_LIBRARIES, RTOS_LIBRARIES, TEST_MBED_LIB],
         "automated": True,
         "mcu": ["LPC1768", "LPC1549", "LPC11U24", "LPC812", "LPC2460", "LPC824", "SSCI824",
-                "KL25Z", "KL05Z", "K64F", "KL46Z", "HEXIWEAR",
-                "RZ_A1H", "VK_RZ_A1H", "DISCO_F407VG", "DISCO_F429ZI", "NUCLEO_F411RE", "DISCO_F469NI", "NUCLEO_F410RB", "NUCLEO_F429ZI",
-                "NUCLEO_F401RE", "NUCLEO_F334R8", "DISCO_F334C8", "NUCLEO_F302R8", "NUCLEO_F030R8", "NUCLEO_F070RB", "NUCLEO_F207ZG",
-                "NUCLEO_L031K6", "NUCLEO_L053R8", "DISCO_L053C8", "NUCLEO_L073RZ", "NUCLEO_F072RB", "NUCLEO_F091RC", "NUCLEO_L432KC", "DISCO_L476VG", "NUCLEO_L476RG",
+                "KL25Z", "KL05Z", "K22F", "K64F", "K66F", "KL43Z", "KL46Z", "HEXIWEAR",
+                "RZ_A1H", "VK_RZ_A1H", "DISCO_F407VG", "DISCO_F429ZI", "NUCLEO_F411RE", "NUCLEO_F412ZG", "DISCO_F469NI", "NUCLEO_F410RB", "NUCLEO_F429ZI",
+                "NUCLEO_F401RE", "NUCLEO_F334R8", "DISCO_F334C8", "NUCLEO_F302R8", "NUCLEO_F303ZE", "NUCLEO_F070RB", "NUCLEO_F207ZG",
+                "NUCLEO_L073RZ", "NUCLEO_F072RB", "NUCLEO_F091RC", "NUCLEO_L432KC", "DISCO_L476VG", "NUCLEO_L476RG",
                 "DISCO_F401VC", "NUCLEO_F303RE", "NUCLEO_F303K8", "MAXWSNENV", "MAX32600MBED", "NUCLEO_L152RE",
                 "NUCLEO_F446RE", "NUCLEO_F446ZE", "NUCLEO_F103RB", "DISCO_F746NG", "NUCLEO_F746ZG", "MOTE_L152RC", "B96B_F446VE",
                 "EFM32HG_STK3400", "EFM32PG_STK3401", "EFM32LG_STK3600", "EFM32GG_STK3700", "EFM32WG_STK3800",
-                "NRF51822", "NRF51_DK", "SEEED_TINY_BLE", "ARM_BEETLE_SOC", "NUCLEO_F767ZI"],
+                "NUMAKER_PFM_NUC472", "NUMAKER_PFM_M453",
+                "NRF51822", "NRF51_DK", "SEEED_TINY_BLE", "ARM_BEETLE_SOC", "NUCLEO_F767ZI", "DISCO_F769NI"],
     },
     {
         "id": "RTOS_6", "description": "Mail messaging",
@@ -803,31 +771,32 @@ TESTS = [
         "dependencies": [MBED_LIBRARIES, RTOS_LIBRARIES, TEST_MBED_LIB],
         "automated": True,
         "mcu": ["LPC1768", "LPC1549", "LPC11U24", "LPC812", "LPC2460", "LPC824", "SSCI824",
-                "KL25Z", "KL05Z", "K64F", "KL46Z", "HEXIWEAR",
-                "RZ_A1H", "VK_RZ_A1H", "DISCO_F407VG", "DISCO_F429ZI", "NUCLEO_F411RE", "DISCO_F469NI", "NUCLEO_F410RB", "NUCLEO_F429ZI",
-                "NUCLEO_F401RE", "NUCLEO_F334R8", "DISCO_F334C8", "NUCLEO_F302R8", "NUCLEO_F030R8", "NUCLEO_F070RB", "NUCLEO_F207ZG",
-                "NUCLEO_L031K6", "NUCLEO_L053R8", "DISCO_L053C8", "NUCLEO_L073RZ", "NUCLEO_F072RB", "NUCLEO_F091RC", "NUCLEO_L432KC", "DISCO_L476VG", "NUCLEO_L476RG",
+                "KL25Z", "KL05Z", "K22F", "K64F", "K66F", "KL43Z", "KL46Z", "HEXIWEAR",
+                "RZ_A1H", "VK_RZ_A1H", "DISCO_F407VG", "DISCO_F429ZI", "NUCLEO_F411RE", "NUCLEO_F412ZG", "DISCO_F469NI", "NUCLEO_F410RB", "NUCLEO_F429ZI",
+                "NUCLEO_F401RE", "NUCLEO_F334R8", "DISCO_F334C8", "NUCLEO_F302R8", "NUCLEO_F303ZE", "NUCLEO_F070RB", "NUCLEO_F207ZG",
+                "NUCLEO_L073RZ", "NUCLEO_F072RB", "NUCLEO_F091RC", "NUCLEO_L432KC", "DISCO_L476VG", "NUCLEO_L476RG",
                 "DISCO_F401VC", "NUCLEO_F303RE", "NUCLEO_F303K8", "MAXWSNENV", "MAX32600MBED", "NUCLEO_L152RE",
                 "NUCLEO_F446RE", "NUCLEO_F446ZE", "NUCLEO_F103RB", "DISCO_F746NG", "NUCLEO_F746ZG", "MOTE_L152RC", "B96B_F446VE",
                 "EFM32HG_STK3400", "EFM32PG_STK3401", "EFM32LG_STK3600", "EFM32GG_STK3700", "EFM32WG_STK3800",
-                "NRF51822", "NRF51_DK", "SEEED_TINY_BLE", "ARM_BEETLE_SOC", "NUCLEO_F767ZI"],
+                "NUMAKER_PFM_NUC472", "NUMAKER_PFM_M453",
+                "NRF51822", "NRF51_DK", "SEEED_TINY_BLE", "ARM_BEETLE_SOC", "NUCLEO_F767ZI", "DISCO_F769NI"],
     },
     {
         "id": "RTOS_7", "description": "Timer",
         "source_dir": join(TEST_DIR, "rtos", "mbed", "timer"),
         "dependencies": [MBED_LIBRARIES, RTOS_LIBRARIES, TEST_MBED_LIB],
-        "duration": 15,
         "automated": True,
         #"host_test": "wait_us_auto",
         "mcu": ["LPC1768", "LPC1549", "LPC11U24", "LPC812", "LPC2460", "LPC824", "SSCI824",
-                "KL25Z", "KL05Z", "K64F", "KL46Z", "HEXIWEAR",
-                "RZ_A1H", "VK_RZ_A1H", "DISCO_F407VG", "DISCO_F429ZI", "NUCLEO_F411RE", "DISCO_F469NI", "NUCLEO_F410RB", "NUCLEO_F429ZI",
-                "NUCLEO_F401RE", "NUCLEO_F334R8", "DISCO_F334C8", "NUCLEO_F302R8", "NUCLEO_F030R8", "NUCLEO_F070RB", "NUCLEO_F207ZG",
-                "NUCLEO_L031K6", "NUCLEO_L053R8", "DISCO_L053C8", "NUCLEO_L073RZ", "NUCLEO_F072RB", "NUCLEO_F091RC", "NUCLEO_L432KC", "DISCO_L476VG", "NUCLEO_L476RG",
+                "KL25Z", "KL05Z", "K22F", "K64F", "K66F", "KL43Z", "KL46Z", "HEXIWEAR",
+                "RZ_A1H", "VK_RZ_A1H", "DISCO_F407VG", "DISCO_F429ZI", "NUCLEO_F411RE", "NUCLEO_F412ZG", "DISCO_F469NI", "NUCLEO_F410RB", "NUCLEO_F429ZI",
+                "NUCLEO_F401RE", "NUCLEO_F334R8", "DISCO_F334C8", "NUCLEO_F302R8", "NUCLEO_F303ZE", "NUCLEO_F070RB", "NUCLEO_F207ZG",
+                "NUCLEO_L073RZ", "NUCLEO_F072RB", "NUCLEO_F091RC", "NUCLEO_L432KC", "DISCO_L476VG", "NUCLEO_L476RG",
                 "DISCO_F401VC", "NUCLEO_F303RE", "NUCLEO_F303K8", "MAXWSNENV", "MAX32600MBED", "NUCLEO_L152RE",
                 "NUCLEO_F446RE", "NUCLEO_F446ZE", "NUCLEO_F103RB", "DISCO_F746NG", "NUCLEO_F746ZG", "MOTE_L152RC", "B96B_F446VE",
                 "EFM32HG_STK3400", "EFM32PG_STK3401", "EFM32LG_STK3600", "EFM32GG_STK3700", "EFM32WG_STK3800",
-                "NRF51822", "NRF51_DK", "SEEED_TINY_BLE", "ARM_BEETLE_SOC", "NUCLEO_F767ZI"],
+                "NUMAKER_PFM_NUC472", "NUMAKER_PFM_M453",
+                "NRF51822", "NRF51_DK", "SEEED_TINY_BLE", "ARM_BEETLE_SOC", "NUCLEO_F767ZI", "DISCO_F769NI"],
     },
     {
         "id": "RTOS_8", "description": "ISR (Queue)",
@@ -835,24 +804,15 @@ TESTS = [
         "dependencies": [MBED_LIBRARIES, RTOS_LIBRARIES, TEST_MBED_LIB],
         "automated": True,
         "mcu": ["LPC1768", "LPC1549", "LPC11U24", "LPC812", "LPC2460", "LPC824", "SSCI824",
-                "KL25Z", "KL05Z", "K64F", "KL46Z", "HEXIWEAR",
-                "RZ_A1H", "VK_RZ_A1H", "DISCO_F407VG", "DISCO_F429ZI", "NUCLEO_F411RE", "DISCO_F469NI", "NUCLEO_F410RB", "NUCLEO_F429ZI",
-                "NUCLEO_F401RE", "NUCLEO_F334R8", "DISCO_F334C8", "NUCLEO_F302R8", "NUCLEO_F030R8", "NUCLEO_F070RB", "NUCLEO_F207ZG",
-                "NUCLEO_L031K6", "NUCLEO_L053R8", "DISCO_L053C8", "NUCLEO_L073RZ", "NUCLEO_F072RB", "NUCLEO_F091RC", "NUCLEO_L432KC", "DISCO_L476VG", "NUCLEO_L476RG",
+                "KL25Z", "KL05Z", "K22F", "K64F", "K66F", "KL43Z", "KL46Z", "HEXIWEAR",
+                "RZ_A1H", "VK_RZ_A1H", "DISCO_F407VG", "DISCO_F429ZI", "NUCLEO_F411RE", "NUCLEO_F412ZG", "DISCO_F469NI", "NUCLEO_F410RB", "NUCLEO_F429ZI",
+                "NUCLEO_F401RE", "NUCLEO_F334R8", "DISCO_F334C8", "NUCLEO_F302R8", "NUCLEO_F303ZE", "NUCLEO_F070RB", "NUCLEO_F207ZG",
+                "NUCLEO_L073RZ", "NUCLEO_F072RB", "NUCLEO_F091RC", "NUCLEO_L432KC", "DISCO_L476VG", "NUCLEO_L476RG",
                 "DISCO_F401VC", "NUCLEO_F303RE", "NUCLEO_F303K8", "MAXWSNENV", "MAX32600MBED", "NUCLEO_L152RE",
                 "NUCLEO_F446RE", "NUCLEO_F446ZE", "NUCLEO_F103RB", "DISCO_F746NG", "NUCLEO_F746ZG", "MOTE_L152RC", "B96B_F446VE",
                 "EFM32HG_STK3400", "EFM32PG_STK3401", "EFM32LG_STK3600", "EFM32GG_STK3700", "EFM32WG_STK3800",
-                "NRF51822", "NRF51_DK", "SEEED_TINY_BLE", "ARM_BEETLE_SOC", "NUCLEO_F767ZI"],
-    },
-    {
-        "id": "RTOS_9", "description": "SD File write-read",
-        "source_dir": join(TEST_DIR, "rtos", "mbed", "file"),
-        "dependencies": [MBED_LIBRARIES, RTOS_LIBRARIES, TEST_MBED_LIB, FS_LIBRARY],
-        "automated": True,
-        "peripherals": ["SD"],
-        "mcu": ["LPC1768", "LPC11U24", "LPC812", "KL25Z", "HEXIWEAR",
-                "KL05Z", "K64F", "KL46Z", "RZ_A1H",
-                "DISCO_F407VG", "DISCO_F429ZI", "NUCLEO_F429ZI", "NUCLEO_F411RE", "NUCLEO_F401RE", "NUCLEO_F410RB", "DISCO_F469NI", "NUCLEO_F207ZG"],
+                "NUMAKER_PFM_NUC472", "NUMAKER_PFM_M453",
+                "NRF51822", "NRF51_DK", "SEEED_TINY_BLE", "ARM_BEETLE_SOC", "NUCLEO_F767ZI", "DISCO_F769NI"],
     },
 
     # Networking Tests
@@ -860,7 +820,6 @@ TESTS = [
         "id": "NET_1", "description": "TCP client hello world",
         "source_dir": join(TEST_DIR, "net", "helloworld", "tcpclient"),
         "dependencies": [MBED_LIBRARIES, RTOS_LIBRARIES, ETH_LIBRARY, TEST_MBED_LIB],
-        "duration": 15,
         "automated": True,
         "peripherals": ["ethernet"],
     },
@@ -868,7 +827,6 @@ TESTS = [
         "id": "NET_2", "description": "NIST Internet Time Service",
         "source_dir": join(TEST_DIR, "net", "helloworld", "udpclient"),
         "dependencies": [MBED_LIBRARIES, RTOS_LIBRARIES, ETH_LIBRARY, TEST_MBED_LIB],
-        "duration": 15,
         "automated": True,
         "peripherals": ["ethernet"],
     },
@@ -909,7 +867,6 @@ TESTS = [
         "source_dir": join(TEST_DIR, "net", "protocols", "HTTPClient_HelloWorld"),
         "dependencies": [MBED_LIBRARIES, RTOS_LIBRARIES, ETH_LIBRARY, TEST_MBED_LIB],
         "automated": True,
-        "duration": 15,
         "peripherals": ["ethernet"],
     },
     {
@@ -948,7 +905,6 @@ TESTS = [
         "source_dir": join(TEST_DIR, "net", "echo", "tcp_client_loop"),
         "dependencies": [MBED_LIBRARIES, RTOS_LIBRARIES, ETH_LIBRARY, TEST_MBED_LIB],
         "automated": True,
-        "duration": 15,
         #"host_test": "tcpecho_client_auto",
         "peripherals": ["ethernet"],
     },
@@ -957,7 +913,6 @@ TESTS = [
         "source_dir": join(TEST_DIR, "net", "echo", "udp_link_layer"),
         "dependencies": [MBED_LIBRARIES, RTOS_LIBRARIES, ETH_LIBRARY],
         "automated": False,
-        "duration": 20,
         "host_test": "udp_link_layer_auto",
         "peripherals": ["ethernet"],
     },
@@ -976,7 +931,8 @@ TESTS = [
         "supported": CORTEX_ARM_SUPPORT,
     },
 
-    # USB Tests
+    # USB Tests 
+    # USB device test list
     {
         "id": "USB_1", "description": "Mouse",
         "source_dir": join(TEST_DIR, "usb", "device", "basic"),
@@ -996,7 +952,6 @@ TESTS = [
         "id": "USB_4", "description": "Serial Port",
         "source_dir": join(TEST_DIR, "usb", "device", "serial"),
         "dependencies": [MBED_LIBRARIES, USB_LIBRARIES],
-        "supported": CORTEX_ARM_SUPPORT,
     },
     {
         "id": "USB_5", "description": "Generic HID",
@@ -1013,7 +968,22 @@ TESTS = [
         "source_dir": join(TEST_DIR, "usb", "device", "audio"),
         "dependencies": [MBED_LIBRARIES, USB_LIBRARIES],
     },
-
+    {
+        "id": "USB_8", "description": "AUDIO_CB",
+        "source_dir": join(TEST_DIR, "usb", "device", "audio_cb"),
+        "dependencies": [MBED_LIBRARIES, USB_LIBRARIES],
+    },
+    # USB host test list
+    {
+        "id": "USB_10", "description": "MSD",
+        "source_dir": join(TEST_DIR, "usb", "host", "mass_storage"),
+        "dependencies": [MBED_LIBRARIES,  USB_HOST_LIBRARIES, RTOS],
+    },
+    {
+        "id": "USB_11", "description": "mouse",
+        "source_dir": join(TEST_DIR, "usb", "host", "mouse"),
+        "dependencies": [MBED_LIBRARIES,  USB_HOST_LIBRARIES, RTOS],
+    },
     # CMSIS DSP
     {
         "id": "CMSIS_DSP_1", "description": "FIR",
@@ -1061,7 +1031,6 @@ TESTS = [
         "dependencies": [MBED_LIBRARIES, TEST_MBED_LIB, join(PERIPHERALS, 'MMA8451Q')],
         "mcu": ["KL25Z", "KL05Z", "KL46Z", "K20D50M"],
         "automated": True,
-        "duration": 15,
         },
 
     # Examples
@@ -1069,13 +1038,14 @@ TESTS = [
         "id": "EXAMPLE_1", "description": "/dev/null",
         "source_dir": join(TEST_DIR, "mbed", "dev_null"),
         "dependencies": [MBED_LIBRARIES, TEST_MBED_LIB],
+        "exclude_mcu": ["NUCLEO_L011K4"],
         "automated": True,
         #"host_test" : "dev_null_auto",
     },
     {
         "id": "EXAMPLE_2", "description": "FS + RTOS",
         "source_dir": join(TEST_DIR, "mbed", "fs"),
-        "dependencies": [MBED_LIBRARIES, RTOS_LIBRARIES, TEST_MBED_LIB, FS_LIBRARY],
+        "dependencies": [MBED_LIBRARIES, RTOS_LIBRARIES, TEST_MBED_LIB],
     },
 
     # CPPUTEST Library provides Unit testing Framework
@@ -1173,7 +1143,7 @@ class Test:
         #'mcu': None,
         'description': None,
         'dependencies': None,
-        'duration': 10,
+        'duration': 30,
         'host_test': 'host_test',
         'automated': False,
         'peripherals': None,
@@ -1236,7 +1206,7 @@ def test_known(string):
 def test_name_known(string):
     if string not in TEST_MAP.keys() and \
        (getattr(ps, "test_alias", None) is None or \
-        ps.test_alias.get(test_id, "") not in TEST_MAP.keys()):
+        ps.test_alias.get(string, "") not in TEST_MAP.keys()):
         raise ArgumentTypeError("Program with name '{0}' not found. Supported tests are: \n{1}".format(string, columnate([t['id'] for t in TESTS])))
 
     return TEST_MAP[string].n

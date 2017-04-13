@@ -15,22 +15,18 @@
  * the C standard library. For GCC, ARM_STD and IAR it is defined with a size of 2048 bytes
  * and for ARM_MICRO 512. Because of reduce RAM size some targets need a reduced stacksize.
  */
-#if (defined(TARGET_STM32L053R8) || defined(TARGET_STM32L053C8)) && defined(TOOLCHAIN_GCC)
-    #define STACK_SIZE DEFAULT_STACK_SIZE/16
-#elif (defined(TARGET_STM32F030R8) || defined(TARGET_STM32F070RB)) && defined(TOOLCHAIN_GCC)
-    #define STACK_SIZE DEFAULT_STACK_SIZE/8
-#elif defined(TARGET_STM32F334R8) && (defined(TOOLCHAIN_GCC) || defined(TOOLCHAIN_IAR))
+#if defined(TARGET_STM32F334R8) && (defined(TOOLCHAIN_GCC) || defined(TOOLCHAIN_IAR))
     #define STACK_SIZE DEFAULT_STACK_SIZE/4
-#elif defined(TARGET_STM32F103RB) && defined(TOOLCHAIN_IAR)
-    #define STACK_SIZE DEFAULT_STACK_SIZE/4
-#elif defined(TARGET_STM32F030R8) && defined(TOOLCHAIN_IAR)
-    #define STACK_SIZE DEFAULT_STACK_SIZE/4	
-#elif defined(TARGET_STM32F070RB) && defined(TOOLCHAIN_IAR)
+#elif defined(TARGET_STM32F103RB)
+    #define STACK_SIZE DEFAULT_STACK_SIZE/2
+#elif defined(TARGET_STM32F070RB)
     #define STACK_SIZE DEFAULT_STACK_SIZE/2	
-#elif defined(TARGET_STM32F072RB) && defined(TOOLCHAIN_IAR)
+#elif defined(TARGET_STM32F072RB)
     #define STACK_SIZE DEFAULT_STACK_SIZE/2	
 #elif defined(TARGET_STM32F302R8) && defined(TOOLCHAIN_IAR)
     #define STACK_SIZE DEFAULT_STACK_SIZE/2		
+#elif defined(TARGET_STM32L073RZ)
+    #define STACK_SIZE DEFAULT_STACK_SIZE/2
 #elif defined(TARGET_STM32F303K8) && defined(TOOLCHAIN_IAR)
     #define STACK_SIZE DEFAULT_STACK_SIZE/4
 #elif (defined(TARGET_EFM32HG_STK3400)) && !defined(TOOLCHAIN_ARM_MICRO)
@@ -39,8 +35,12 @@
     #define STACK_SIZE 768
 #elif (defined(TARGET_EFM32GG_STK3700)) && !defined(TOOLCHAIN_ARM_MICRO)
     #define STACK_SIZE 1536
+#elif (defined(TARGET_EFR32)) && !defined(TOOLCHAIN_ARM_MICRO)
+    #define STACK_SIZE 768
 #elif defined(TARGET_MCU_NRF51822) || defined(TARGET_MCU_NRF52832)
     #define STACK_SIZE 768
+#elif defined(TARGET_XDOT_L151CC)
+    #define STACK_SIZE 1024
 #else
     #define STACK_SIZE DEFAULT_STACK_SIZE
 #endif
@@ -56,8 +56,8 @@ volatile int change_counter = 0;
 volatile int sem_counter = 0;
 volatile bool sem_defect = false;
 
-void test_thread(void const *delay) {
-    const int thread_delay = int(delay);
+void test_thread(int const *delay) {
+    const int thread_delay = *delay;
     while (true) {
         two_slots.wait();
         sem_counter++;
@@ -81,9 +81,13 @@ int main (void) {
     const int t1_delay = THREAD_DELAY * 1;
     const int t2_delay = THREAD_DELAY * 2;
     const int t3_delay = THREAD_DELAY * 3;
-    Thread t1(test_thread, (void *)t1_delay, osPriorityNormal, STACK_SIZE);
-    Thread t2(test_thread, (void *)t2_delay, osPriorityNormal, STACK_SIZE);
-    Thread t3(test_thread, (void *)t3_delay, osPriorityNormal, STACK_SIZE);
+    Thread t1(osPriorityNormal, STACK_SIZE);
+    Thread t2(osPriorityNormal, STACK_SIZE);
+    Thread t3(osPriorityNormal, STACK_SIZE);
+
+    t1.start(callback(test_thread, &t1_delay));
+    t2.start(callback(test_thread, &t2_delay));
+    t3.start(callback(test_thread, &t3_delay));
 
     while (true) {
         if (change_counter >= SEM_CHANGES or sem_defect == true) {

@@ -15,11 +15,7 @@
  * the C standard library. For GCC, ARM_STD and IAR it is defined with a size of 2048 bytes
  * and for ARM_MICRO 512. Because of reduce RAM size some targets need a reduced stacksize.
  */
-#if defined(TARGET_MCU_NRF51822) || defined(TARGET_MCU_NRF52832)
-    #define STACK_SIZE 512
-#else
-    #define STACK_SIZE DEFAULT_STACK_SIZE
-#endif
+#define PARALLEL_STACK_SIZE 512
 
 using namespace utest::v1;
 
@@ -43,7 +39,8 @@ void increment_with_wait(counter_t* counter) {
 }
 
 void increment_with_child(counter_t* counter) {
-    Thread child(counter, increment, osPriorityNormal, STACK_SIZE);
+    Thread child;
+    child.start(callback(increment, counter));
     child.join();
 }
 
@@ -52,18 +49,26 @@ void increment_with_murder(counter_t* counter) {
         // take ownership of the counter mutex so it prevent the child to
         // modify counter.
         LockGuard lock(counter->internal_mutex());
-        Thread child(counter, increment, osPriorityNormal, STACK_SIZE);
+        Thread child;
+        child.start(callback(increment, counter));
         child.terminate();
     }
 
     (*counter)++;
 }
 
+void self_terminate(Thread *self) {
+    self->terminate();
+    // Code should not get here
+    TEST_ASSERT(0);
+}
+
 // Tests that spawn tasks in different configurations
 template <void (*F)(counter_t *)>
 void test_single_thread() {
     counter_t counter(0);
-    Thread thread(&counter, F, osPriorityNormal, STACK_SIZE);
+    Thread thread;
+    thread.start(callback(F, &counter));
     thread.join();
     TEST_ASSERT_EQUAL(counter, 1);
 }
@@ -74,7 +79,8 @@ void test_parallel_threads() {
     Thread *threads[N];
 
     for (int i = 0; i < N; i++) {
-        threads[i] = new Thread(&counter, F, osPriorityNormal, STACK_SIZE);
+        threads[i] = new Thread(osPriorityNormal, PARALLEL_STACK_SIZE);
+        threads[i]->start(callback(F, &counter));
     }
 
     for (int i = 0; i < N; i++) {
@@ -90,11 +96,19 @@ void test_serial_threads() {
     counter_t counter(0);
 
     for (int i = 0; i < N; i++) {
-        Thread thread(&counter, F, osPriorityNormal, STACK_SIZE);
+        Thread thread;
+        thread.start(callback(F, &counter));
         thread.join();
     }
 
     TEST_ASSERT_EQUAL(counter, N);
+}
+
+void test_self_terminate() {
+    Thread *thread = new Thread();
+    thread->start(callback(self_terminate, thread));
+    thread->join();
+    delete thread;
 }
 
 utest::v1::status_t test_setup(const size_t number_of_cases) {
@@ -123,6 +137,8 @@ Case cases[] = {
     Case("Testing single thread with murder", test_single_thread<increment_with_murder>),
     Case("Testing parallel threads with murder", test_parallel_threads<3, increment_with_murder>),
     Case("Testing serial threads with murder", test_serial_threads<10, increment_with_murder>),
+
+    Case("Testing thread self terminate", test_self_terminate),
 };
 
 Specification specification(test_setup, cases);
